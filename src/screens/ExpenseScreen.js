@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Dimensions, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity, SectionList, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, StyleSheet, FlatList, Dimensions, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity, SectionList, Alert, ScrollView } from 'react-native';
 import { Card, Text, FAB, Title, Paragraph, Modal, Portal, Button, TextInput, Appbar, Divider, Chip, ActivityIndicator, Menu } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { supabase } from '../lib/supabase';
 import Toast from 'react-native-toast-message';
+import MainScreenWrapper from '../components/MainScreenWrapper';
 
 export default function ExpenseScreen({ navigation }) {
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [formData, setFormData] = useState({ amount: '', description: '' });
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState('');
   const [income, setIncome] = useState(0);
@@ -23,14 +22,16 @@ export default function ExpenseScreen({ navigation }) {
 
   const handleEditExpense = (expense) => {
     setSelectedCategory(expense.category_id);
-    setAmount(expense.amount.toString());
-    setDescription(expense.description || '');
+    setFormData({
+      amount: expense.amount.toString(),
+      description: expense.description || ''
+    });
     setShowForm(true);
     setEditingExpenseId(expense.id);
   };
 
   const handleDeleteExpense = (expenseId) => {
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense?', [
+    Alert.alert('Delete Expense', 'Are you sure you want toa delete this expense?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         await supabase.from('expenses').delete().eq('id', expenseId);
@@ -108,14 +109,49 @@ export default function ExpenseScreen({ navigation }) {
   const fetchCategories = async () => {
     const { data, error } = await supabase
       .from('budget_categories')
-      .select('id, name');
+      .select('id, name, parent_id')
+      .order('created_at', { ascending: true });
     if (!error && data && data.length > 0) {
       setCategories(data);
-      setSelectedCategory(data[0].id);
+      // Set first main category as default
+      const mainCategories = data.filter(cat => !cat.parent_id);
+      if (mainCategories.length > 0) {
+        setSelectedCategory(mainCategories[0].id);
+      }
     } else {
       setCategories([]);
       setSelectedCategory("");
     }
+  };
+
+  // Get main categories (no parent_id)
+  const getMainCategories = () => {
+    return categories.filter(cat => !cat.parent_id);
+  };
+
+  // Get subcategories for a specific parent
+  const getSubcategories = (parentId) => {
+    return categories.filter(cat => cat.parent_id === parentId);
+  };
+
+  // Get all categories for selection (main + subcategories)
+  const getAllCategoriesForSelection = () => {
+    const mainCategories = getMainCategories();
+    const allCategories = [];
+    
+    mainCategories.forEach(mainCat => {
+      allCategories.push(mainCat);
+      const subcategories = getSubcategories(mainCat.id);
+      subcategories.forEach(subcat => {
+        allCategories.push({
+          ...subcat,
+          name: `  ${subcat.name}`, // Indent subcategories
+          displayName: `${mainCat.name} > ${subcat.name}` // For display
+        });
+      });
+    });
+    
+    return allCategories;
   };
 
   const fetchIncome = async () => {
@@ -147,20 +183,18 @@ export default function ExpenseScreen({ navigation }) {
   // Remove this useEffect since fetchExpenses is now called in loadAllData
 
   const handleAddOrEditExpense = async () => {
-    if (!selectedCategory || !amount || isNaN(amount) || Number(amount) <= 0) {
+    if (!selectedCategory || !formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
       Toast.show({ type: 'error', text1: 'Please select a category and enter a valid amount.' });
       return;
     }
     setLoading(true);
     const user = await supabase.auth.getUser();
-    
     if (editingExpenseId) {
       // Update existing expense
       const { error } = await supabase
         .from('expenses')
-        .update({ category_id: selectedCategory, amount: Number(amount), description })
+        .update({ category_id: selectedCategory, amount: Number(formData.amount), description: formData.description })
         .eq('id', editingExpenseId);
-      
       if (error) {
         Toast.show({ type: 'error', text1: 'Failed to update expense. Try again.' });
         setLoading(false);
@@ -169,22 +203,19 @@ export default function ExpenseScreen({ navigation }) {
       Toast.show({ type: 'success', text1: 'Expense updated!' });
     } else {
       // Add new expense
-    const { error } = await supabase
-      .from('expenses')
-      .insert([{ user_id: user.data.user.id, category_id: selectedCategory, amount: Number(amount), description }]);
-      
-    if (error) {
-      Toast.show({ type: 'error', text1: 'Failed to log expense. Try again.' });
+      const { error } = await supabase
+        .from('expenses')
+        .insert([{ user_id: user.data.user.id, category_id: selectedCategory, amount: Number(formData.amount), description: formData.description }]);
+      if (error) {
+        Toast.show({ type: 'error', text1: 'Failed to log expense. Try again.' });
         setLoading(false);
-      return;
+        return;
       }
       Toast.show({ type: 'success', text1: 'Expense logged!' });
     }
-    
     setLoading(false);
     setShowForm(false);
-    setAmount("");
-    setDescription("");
+    setFormData({ amount: '', description: '' });
     setSelectedCategory(categories[0]?.id || "");
     setEditingExpenseId(null);
     fetchExpenses();
@@ -200,7 +231,15 @@ export default function ExpenseScreen({ navigation }) {
 
   const categoryNameLookup = (categoryId) => {
     const cat = categories.find(c => c.id === categoryId);
-    return cat ? cat.name : 'Unknown';
+    if (!cat) return 'Unknown';
+    
+    // If it's a subcategory, show parent > subcategory
+    if (cat.parent_id) {
+      const parentCat = categories.find(c => c.id === cat.parent_id);
+      return parentCat ? `${parentCat.name} > ${cat.name}` : cat.name;
+    }
+    
+    return cat.name;
   };
 
   const formatSectionDate = (dateStr) => {
@@ -228,25 +267,25 @@ export default function ExpenseScreen({ navigation }) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <MainScreenWrapper navigation={navigation} currentRoute="Expense">
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#A259FF" />
           <Text style={styles.loadingText}>Loading your expenses...</Text>
         </View>
         <Toast />
-      </SafeAreaView>
+      </MainScreenWrapper>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <MainScreenWrapper navigation={navigation} currentRoute="Expense">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={64}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 55 }}>
             {/* Header with dynamic greeting and logout */}
             <View style={{ marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flex: 1 }}>
@@ -272,64 +311,93 @@ export default function ExpenseScreen({ navigation }) {
             </Card>
 
             {/* Payment List */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
-              <Text style={styles.sectionTitle}>Expense History</Text>
-              {/* <TouchableOpacity activeOpacity={0.7} onPress={() => Toast.show({ type: 'info', text1: 'Coming soon!' })}>
-                <Text style={styles.viewAll}>View all</Text>
-              </TouchableOpacity> */}
-            </View>
-            {expenses.length > 0 ? (
-              <SectionList
-                sections={sections}
-                keyExtractor={item => item.id}
-                renderSectionHeader={({ section: { title } }) => (
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 16, marginBottom: 4, color: '#222' }}>{formatSectionDate(title)}</Text>
-                )}
-                renderItem={({ item }) => (
-                  <Card style={{ marginBottom: 12, marginHorizontal: 4, borderRadius: 12 }}>
-                    <Card.Content>
-                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: '600', color: '#222', fontSize: 16, marginBottom: 4 }}>
-                          {item.description || 'No description'}
-                        </Text>
-                        <Text style={{ color: '#888', fontSize: 14 }}>
-                          {categoryNameLookup(item.category_id)}
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ color: '#A259FF', fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>
-                          {`₹${item.amount}`}
-                        </Text>
-                        <Text style={{ color: '#bbb', fontSize: 12 }}>
-                          {formatTime(item.created_at)}
-                        </Text>
-                      </View>
-                    </View>
-                    </Card.Content>
-                  </Card>
-                )}
-                style={{ marginBottom: 16 }}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                stickySectionHeadersEnabled={false}
-              />
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyMessage}>Expense? Let's MoneyMate 💸</Text>
+                     {/* Payment List (scrollable & full-height) */}
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
+                <Text style={styles.sectionTitle}>Expense History</Text>
               </View>
-            )}
 
-            {/* Add Expense Form Card - Similar to Budget Categories */}
-            {showForm ? (
+              {expenses.length > 0 ? (
+                <SectionList
+                  sections={sections}
+                  keyExtractor={item => item.id}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, marginTop: 16, marginBottom: 4, color: '#222' }}>
+                      {formatSectionDate(title)}
+                    </Text>
+                  )}
+                  // renderItem={({ item }) => (
+                  //   <Card style={{ marginBottom: 12, marginHorizontal: 4, borderRadius: 12 }} pointerEvents="none">
+                  //     <Card.Content>
+                  //       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  //         <View style={{ flex: 1 }}>
+                  //           <Text style={{ fontWeight: '600', color: '#222', fontSize: 16, marginBottom: 4 }}>
+                  //             {item.description || 'No description'}
+                  //           </Text>
+                  //           <Text style={{ color: '#888', fontSize: 14 }}>
+                  //             {categoryNameLookup(item.category_id)}
+                  //           </Text>
+                  //         </View>
+                  //         <View style={{ alignItems: 'flex-end' }}>
+                  //           <Text style={{ color: '#A259FF', fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>
+                  //             {`₹${item.amount}`}
+                  //           </Text>
+                  //           <Text style={{ color: '#bbb', fontSize: 12 }}>
+                  //             {formatTime(item.created_at)}
+                  //           </Text>
+                  //         </View>
+                  //       </View>
+                  //     </Card.Content>
+                  //   </Card>
+                  // )}
+                  renderItem={({ item }) => (
+  <TouchableOpacity
+    activeOpacity={1}            // keeps visuals unchanged
+    onPress={() => { /* empty */ }} // prevents child capture
+  >
+    <Card style={{ marginBottom: 12, marginHorizontal: 4, borderRadius: 12 }}>
+      <Card.Content>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: '600', color: '#222', fontSize: 16, marginBottom: 4 }}>
+              {item.description || 'No description'}
+            </Text>
+            <Text style={{ color: '#888', fontSize: 14 }}>
+              {categoryNameLookup(item.category_id)}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ color: '#A259FF', fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>
+              {`₹${item.amount}`}
+            </Text>
+            <Text style={{ color: '#bbb', fontSize: 12 }}>
+              {formatTime(item.created_at)}
+            </Text>
+          </View>
+        </View>
+      </Card.Content>
+    </Card>
+  </TouchableOpacity>
+)}
+                  contentContainerStyle={{ paddingBottom: 120 }}
+                  stickySectionHeadersEnabled={false}
+                />
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyMessage}>Expense? Let's MoneyMate 💸</Text>
+                </View>
+              )}
+            </View>
+            {/* Add/Edit Expense Form */}
+            {showForm && (
               <Card style={styles.formCard}>
                 <Card.Content>
                   <Text style={styles.formTitle}>{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</Text>
-                  
                   {/* Category Selection */}
                   <View style={{ marginBottom: 16 }}>
                     <Text style={styles.label}>Category</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                      {categories.map((cat) => (
+                      {getAllCategoriesForSelection().map((cat) => (
                         <TouchableOpacity
                           key={cat.id}
                           style={[
@@ -342,18 +410,17 @@ export default function ExpenseScreen({ navigation }) {
                             styles.categoryChipText,
                             selectedCategory === cat.id && styles.selectedCategoryChipText
                           ]}>
-                            {cat.name}
+                            {cat.displayName || cat.name}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </View>
-
                   {/* Amount Input */}
                   <TextInput
                     label="Amount"
-                    value={amount}
-                    onChangeText={(text) => setAmount(text)}
+                    value={formData.amount}
+                    onChangeText={(text) => setFormData({ ...formData, amount: text })}
                     keyboardType="numeric"
                     style={styles.input}
                     placeholderTextColor="#888888"
@@ -368,12 +435,11 @@ export default function ExpenseScreen({ navigation }) {
                     textColor="#222222"
                     left={<TextInput.Icon icon="currency-inr" color="#A259FF" />}
                   />
-
                   {/* Description Input */}
                   <TextInput
                     label="Description (optional)"
-                    value={description}
-                    onChangeText={(text) => setDescription(text)}
+                    value={formData.description}
+                    onChangeText={(text) => setFormData({ ...formData, description: text })}
                     style={styles.input}
                     placeholderTextColor="#888888"
                     theme={{
@@ -387,26 +453,24 @@ export default function ExpenseScreen({ navigation }) {
                     textColor="#222222"
                     left={<TextInput.Icon icon="note-outline" color="#A259FF" />}
                   />
-
                   {/* Action Buttons */}
                   <View style={{ flexDirection: 'row', marginTop: 16 }}>
                     <Button
                       mode="contained"
                       onPress={handleAddOrEditExpense}
-                      style={styles.addButton}
+                      style={styles.saveButton}
                       labelStyle={{ color: "#fff", fontWeight: "bold" }}
                       loading={loading}
                     >
                       {loading ? (editingExpenseId ? "Updating..." : "Adding...") : (editingExpenseId ? "Update Expense" : "Add Expense")}
                     </Button>
                     <View style={{ width: 12 }} />
-                                  <Button
+                    <Button
                       mode="outlined"
                       style={styles.cancelButton}
                       onPress={() => {
                         setShowForm(false);
-                        setAmount("");
-                        setDescription("");
+                        setFormData({ amount: '', description: '' });
                         setSelectedCategory(categories[0]?.id || "");
                         setEditingExpenseId(null);
                       }}
@@ -417,37 +481,23 @@ export default function ExpenseScreen({ navigation }) {
                   </View>
                 </Card.Content>
               </Card>
-            ) : (
-              <>
-                {/* Add Expense FAB */}
-            <FAB
-              style={styles.fabFooter}
-              icon="plus"
-              onPress={() => setShowForm(true)}
-              color="#fff"
-            />
-              </>
+            )}
+
+            {/* Add Expense FAB */}
+            {!showForm && (
+              <FAB
+                style={styles.fabFooter}
+                icon="plus"
+                onPress={() => setShowForm(true)}
+                color="#fff"
+              />
             )}
           </View>
         </TouchableWithoutFeedback>
+        <Toast />
       </KeyboardAvoidingView>
-      {/* Footer Navigation Bar */}
-      <View style={styles.footerNav}>
-        <TouchableOpacity style={styles.footerNavItem}>
-          <Icon name="credit-card-outline" size={26} color="#A259FF" />
-          <Text style={styles.footerNavLabelActive}>Expense</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerNavItem} onPress={() => navigation.navigate('BudgetDetails')}>
-          <Icon name="chart-pie" size={26} color="#888888" />
-          <Text style={styles.footerNavLabel}>Budgets</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.footerNavItem}>
-          <Icon name="chart-bar" size={26} color="#888888" />
-          <Text style={styles.footerNavLabel}>Reports</Text>
-        </TouchableOpacity>
-      </View>
-      <Toast />
-    </SafeAreaView>
+    </MainScreenWrapper>
+// ...existing code ends cleanly at the MainScreenWrapper closing tag...
   );
 }
 
@@ -455,7 +505,7 @@ const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 3;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 16 },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { fontSize: 28, fontWeight: 'bold', color: '#222222', marginBottom: 4, textAlign: 'center', fontStyle: 'italic', textShadowColor: '#A259FF33', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
   greeting: { fontSize: 18, color: '#222222', fontWeight: '600', textAlign: 'center', marginBottom: 8 },
   greetingLarge: { fontSize: 26, color: '#222222', fontWeight: 'bold', textAlign: 'left', marginBottom: 8 },
@@ -485,7 +535,14 @@ const styles = StyleSheet.create({
   pickerWrapper: { backgroundColor: '#000', borderRadius: 8, borderColor: '#00ff99', borderWidth: 1, marginBottom: 16, marginTop: 4 },
   picker: { color: '#fff', height: 48, width: '100%' },
   formButtonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  formCard: { marginBottom: 16, backgroundColor: '#F7F7F7', borderRadius: 10, borderColor: '#A259FF', borderWidth: 1 },
+  formCard: {
+    marginBottom: 16,
+    marginHorizontal: 4,
+    backgroundColor: '#F7F7F7',
+    borderRadius: 10,
+    borderColor: '#A259FF',
+    borderWidth: 1,
+  },
   formTitle: { fontSize: 20, fontWeight: 'bold', color: '#A259FF', textAlign: 'center', marginBottom: 16 },
   label: { fontSize: 15, marginBottom: 6, color: '#222222', fontWeight: 'bold' },
   input: { marginBottom: 12, backgroundColor: '#FFFFFF', borderColor: '#A259FF', color: '#222222', borderWidth: 1, borderRadius: 8 },
@@ -494,46 +551,22 @@ const styles = StyleSheet.create({
   categoryChipText: { color: '#222222', fontWeight: 'bold' },
   selectedCategoryChipText: { color: '#FFFFFF', fontWeight: 'bold' },
   addButton: { flex: 1, backgroundColor: '#A259FF', borderRadius: 10 },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#A259FF',
+    borderRadius: 10,
+  },
   cancelButton: { flex: 1, borderColor: '#888888', borderRadius: 10 },
   fabFooter: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 100,
     alignSelf: 'center',
     backgroundColor: '#A259FF',
     elevation: 4,
     zIndex: 10,
   },
-  footerNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    height: 64,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  footerNavItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footerNavLabel: {
-    fontSize: 12,
-    color: '#888888',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  footerNavLabelActive: {
-    fontSize: 12,
-    color: '#A259FF',
-    marginTop: 2,
-    fontWeight: '700',
-  },
+
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -573,5 +606,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+
 
 });
