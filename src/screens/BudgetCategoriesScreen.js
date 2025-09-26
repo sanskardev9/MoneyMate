@@ -17,10 +17,16 @@ import {
   Card,
   IconButton,
   ProgressBar,
+<<<<<<< HEAD
   Chip,
 } from "react-native-paper";
 import { supabase } from "../lib/supabase";
 // import Animated, { FadeInDown } from "react-native-reanimated";
+=======
+} from "react-native-paper";
+import { supabase } from "../lib/supabase";
+import Animated, { FadeInDown } from "react-native-reanimated";
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
 import {
   KeyboardAvoidingView,
   Platform,
@@ -33,9 +39,14 @@ import BudgetCategoriesHeader from "../components/BudgetCategoriesHeader";
 const BudgetCategoriesScreen = ({ navigation }) => {
   const [categories, setCategories] = useState([]);
   const [income, setIncome] = useState(0);
+<<<<<<< HEAD
   const [incomeDetails, setIncomeDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", amount: "", id: null, parent_id: null });
+=======
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ name: "", amount: "", id: null });
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   const [showForm, setShowForm] = useState(false);
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState("");
@@ -47,8 +58,11 @@ const BudgetCategoriesScreen = ({ navigation }) => {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+<<<<<<< HEAD
   const [selectedParentCategory, setSelectedParentCategory] = useState(null);
   const [includeBorrowedInBudget, setIncludeBorrowedInBudget] = useState(true);
+=======
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
 
   const DEFAULT_CATEGORIES = [
     { name: "Needs", amount: 0 },
@@ -91,13 +105,18 @@ const BudgetCategoriesScreen = ({ navigation }) => {
   const fetchIncome = async (user_id) => {
     const { data, error } = await supabase
       .from("incomes")
+<<<<<<< HEAD
       .select("amount, type, source, due_date, created_at, user_id")
+=======
+      .select("amount, created_at, user_id")
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
       .eq("user_id", user_id)
       .order("created_at", { ascending: false })
       .limit(1);
 
     console.log("Fetched income data:", data, "Error:", error);
 
+<<<<<<< HEAD
     if (data && data.length > 0) {
       setIncome(data[0].amount);
       // Store income details for display
@@ -106,6 +125,10 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       setIncome(0);
       setIncomeDetails(null);
     }
+=======
+    if (data && data.length > 0) setIncome(data[0].amount);
+    else setIncome(0);
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   };
 
   const fetchCategories = async (user_id) => {
@@ -119,6 +142,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     setCategories(data || []);
   };
 
+<<<<<<< HEAD
   // Get main categories (no parent_id)
   const getMainCategories = () => {
     return categories.filter(cat => !cat.parent_id);
@@ -139,10 +163,27 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     .filter(c => !c.parent_id) // Only main categories
     .reduce((sum, c) => sum + Number(c.amount), 0);
   const allocationRatio = totalAllocated / totalAvailableIncome;
+=======
+  const totalAllocated = categories.reduce(
+    (sum, c) => sum + Number(c.amount),
+    0
+  );
+  const allocationRatio = totalAllocated / income;
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   let barColor = "#00ff99";
   if (allocationRatio > 1) barColor = "red";
   else if (allocationRatio > 0.9) barColor = "orange";
 
+<<<<<<< HEAD
+=======
+  // const getGreeting = () => {
+  //   const hour = new Date().getHours();
+  //   if (hour < 12) return "Good morning ";
+  //   if (hour < 18) return "Good afternoon ";
+  //   return "Good evening ";
+  // };
+
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   const handleAddOrEdit = async () => {
     if (!form.name || !form.amount) {
       Alert.alert("Error", "Please enter both name and amount.");
@@ -152,6 +193,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       Alert.alert("Error", "Amount must be a positive number.");
       return;
     }
+<<<<<<< HEAD
 
     const newAmount = Number(form.amount);
     
@@ -174,22 +216,43 @@ const BudgetCategoriesScreen = ({ navigation }) => {
         Alert.alert("Error", `Amount cannot exceed remaining budget of ₹${remainingBudget.toLocaleString('en-IN')}`);
         return;
       }
+=======
+    const newTotal =
+      totalAllocated -
+      (form.id ? categories.find((c) => c.id === form.id).amount : 0) +
+      Number(form.amount);
+    if (newTotal > income) {
+      Alert.alert("Error", "Total allocation exceeds your income!");
+      return;
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
     }
     if (form.id) {
       await supabase
         .from("budget_categories")
+<<<<<<< HEAD
         .update({ name: form.name, amount: Number(form.amount), parent_id: form.parent_id })
+=======
+        .update({ name: form.name, amount: Number(form.amount) })
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
         .eq("id", form.id);
     } else {
       await supabase
         .from("budget_categories")
         .insert([
+<<<<<<< HEAD
           { user_id: user.id, name: form.name, amount: Number(form.amount), parent_id: form.parent_id },
         ]);
     }
     setForm({ name: "", amount: "", id: null, parent_id: null });
     setShowForm(false);
     setSelectedParentCategory(null);
+=======
+          { user_id: user.id, name: form.name, amount: Number(form.amount) },
+        ]);
+    }
+    setForm({ name: "", amount: "", id: null });
+    setShowForm(false);
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
     fetchCategories(user.id);
   };
 
@@ -198,15 +261,20 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       name: category.name,
       amount: String(category.amount),
       id: category.id,
+<<<<<<< HEAD
       parent_id: category.parent_id,
     });
     setSelectedParentCategory(category.parent_id);
+=======
+    });
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
     setShowForm(true);
   };
 
   const handleDelete = async (id) => {
     const category = categories.find(c => c.id === id);
     setCategoryToDelete(category);
+<<<<<<< HEAD
     
     // Check if category or its subcategories have any expenses
     const hasExpenses = await checkCategoryExpenses(id);
@@ -259,10 +327,14 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       console.error('Error checking category expenses:', error);
       return false;
     }
+=======
+    setShowDeleteModal(true);
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   };
 
   const confirmDelete = async () => {
     if (categoryToDelete) {
+<<<<<<< HEAD
       try {
         // Also delete all subcategories
         await supabase.from("budget_categories").delete().eq("parent_id", categoryToDelete.id);
@@ -298,6 +370,14 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     return Math.max(0, allocated - subcategoriesTotal);
   };
 
+=======
+      await supabase.from("budget_categories").delete().eq("id", categoryToDelete.id);
+          fetchCategories(user.id);
+      setShowDeleteModal(false);
+      setCategoryToDelete(null);
+    }
+  };
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   console.log("UserName: ", userName);
 
   // Prefill default categories based on income
@@ -318,6 +398,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     if (!error) setCategories(inserted || []);
   };
 
+<<<<<<< HEAD
   const renderCategoryItem = ({ item }) => {
     const subcategories = getSubcategories(item.id);
     const isMainCategory = !item.parent_id;
@@ -384,6 +465,8 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     );
   };
 
+=======
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <KeyboardAvoidingView
@@ -393,15 +476,25 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       >
         <View style={styles.container}>
           <BudgetCategoriesHeader />
+<<<<<<< HEAD
           
           <View>
+=======
+          <View>
+            {/* <Text style={styles.header}>Budget Categories</Text> */}
+            {/* <Text style={styles.greeting}>{`${getGreeting()}, ${userName}`}</Text> */}
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
             <Card style={styles.summaryCard}>
               <Card.Content>
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
+<<<<<<< HEAD
                     marginBottom: 8,
+=======
+                    marginBottom: 4,
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                   }}
                 >
                   <Text
@@ -411,7 +504,11 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                       fontSize: 16,
                     }}
                   >
+<<<<<<< HEAD
                     💰 Total Income: ₹{income.toLocaleString('en-IN')}
+=======
+                    Total Income: ₹{income}
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                   </Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -424,6 +521,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
 
+<<<<<<< HEAD
                 {/* Display earned vs borrowed income */}
                 {incomeDetails?.type === 'borrowed' && (
                   <View style={styles.incomeBreakdown}>
@@ -483,13 +581,26 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                 </Text>
                 <ProgressBar
                   progress={totalAvailableIncome ? totalAllocated / totalAvailableIncome : 0}
+=======
+                <Text style={{ color: "#888888" }}>
+                  Remaining Budget: ₹{income - totalAllocated}
+                </Text>
+                <ProgressBar
+                  progress={income ? totalAllocated / income : 0}
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                   color="#A259FF"
                   style={{ marginTop: 8 }}
                 />
                 <Text style={{ color: "#A259FF", marginTop: 4 }}>
+<<<<<<< HEAD
                   {totalAvailableIncome
                     ? `${Math.round(
                         (totalAllocated / totalAvailableIncome) * 100
+=======
+                  {income
+                    ? `${Math.round(
+                        (totalAllocated / income) * 100
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                       )}% allocated `
                     : "Start by adding your income 💰"}
                 </Text>
@@ -499,9 +610,38 @@ const BudgetCategoriesScreen = ({ navigation }) => {
 
           <View style={{ flex: 1 }}>
             <FlatList
+<<<<<<< HEAD
               data={getMainCategories()}
               keyExtractor={(item) => item.id}
               renderItem={renderCategoryItem}
+=======
+              data={categories}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Animated.View entering={FadeInDown}>
+                  <Card style={styles.card}>
+                    <Card.Title
+                      title={item.name}
+                      subtitle={`₹${item.amount}`}
+                      titleStyle={{ color: "#222222" }}
+                      subtitleStyle={{ color: "#888888" }}
+                      right={() => (
+                        <View style={{ flexDirection: "row" }}>
+                          <IconButton
+                            icon="pencil"
+                            onPress={() => handleEdit(item)}
+                          />
+                          <IconButton
+                            icon="delete"
+                            onPress={() => handleDelete(item.id)}
+                          />
+                        </View>
+                      )}
+                    />
+                  </Card>
+                </Animated.View>
+              )}
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
               ListEmptyComponent={
                 <View
                   style={{
@@ -545,6 +685,14 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={{
+<<<<<<< HEAD
+=======
+                        // backgroundColor: "#F7F7F7",
+                        // borderRadius: 10,
+                        // paddingVertical: 12,
+                        // paddingHorizontal: 16,
+                        // borderWidth: 1,
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                         borderColor: "#A259FF",
                       }}
                       onPress={() => setShowInfoModal(true)}
@@ -560,6 +708,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
           </View>
           {showForm ? (
             <Card style={styles.formCard}>
+<<<<<<< HEAD
                           <Card.Content>
               {/* Show parent category info when adding subcategory */}
               {form.parent_id && !form.id && (
@@ -627,6 +776,9 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                    form.parent_id ? 'Add Subcategory' : 'Add Category'}
                 </Text>
                 
+=======
+              <Card.Content>
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                 <TextInput
                   label="Category Name"
                   value={form.name}
@@ -683,12 +835,20 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                     }}
                     onPress={() => {
                       setShowForm(false);
+<<<<<<< HEAD
                       setForm({ name: "", amount: "", id: null, parent_id: null });
                       setSelectedParentCategory(null);
                     }}
                     labelStyle={{ color: "#888888", fontWeight: "bold" }}
                   >
                     Cancel
+=======
+                      setForm({ name: "", amount: "", id: null });
+                    }}
+                    labelStyle={{ color: "#888888", fontWeight: "bold" }}
+                  >
+                    Continue
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                   </Button>
                 </View>
               </Card.Content>
@@ -714,7 +874,11 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                   if (totalAllocated >= income) {
                     navigation.navigate("Expense");
                   } else {
+<<<<<<< HEAD
                     setShowModal(true);
+=======
+                    setShowModal(true); // ✅ Just reuse showModal
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
                   }
                 }}
                 labelStyle={{ color: "#888888" }}
@@ -727,6 +891,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
       </KeyboardAvoidingView>
 
       {/* Modals */}
+<<<<<<< HEAD
       <CustomModal
         visible={showModal}
         onClose={() => setShowModal(false)}
@@ -738,6 +903,19 @@ const BudgetCategoriesScreen = ({ navigation }) => {
         message="It's cool to skip — just don't ghost your budget forever, You can always set it up later!😉"
         confirmText="Continue Anyway"
       />
+=======
+          <CustomModal
+            visible={showModal}
+            onClose={() => setShowModal(false)}
+            onConfirm={() => {
+              setShowModal(false); // Close modal
+              navigation.navigate("Expense"); // ✅ Now it navigates
+            }}
+            title="Skip Budgeting?"
+        message="It's cool to skip — just don't ghost your budget forever, You can always set it up later!😉"
+            confirmText="Continue Anyway"
+          />
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
 
       {/* Delete Confirmation Modal */}
       <CustomModal
@@ -752,6 +930,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
         confirmText="Delete"
       />
 
+<<<<<<< HEAD
       {/* Info Modal */}
       <CustomModal
         visible={showInfoModal}
@@ -783,6 +962,39 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+=======
+        {/* Info Modal */}
+        <CustomModal
+  visible={showInfoModal}
+  onClose={() => setShowInfoModal(false)}
+  onConfirm={() => setShowInfoModal(false)}
+  title="50/30/20 Budgeting Rule"
+  message={
+    <View style={{ paddingVertical: 10 }}>
+      <Text style={{ fontSize: 14, marginBottom: 8 }}>
+        The 50/30/20 Rule is a simple budgeting method:
+      </Text>
+      <Text style={{ fontSize: 14, marginBottom: 4 }}>
+        • <Text style={{ fontWeight: 'bold' }}>50%</Text> for Needs (rent, food, transport)
+      </Text>
+      <Text style={{ fontSize: 14, marginBottom: 4 }}>
+        • <Text style={{ fontWeight: 'bold' }}>30%</Text> for Wants (shopping, dining out)
+      </Text>
+      <Text style={{ fontSize: 14, marginBottom: 4 }}>
+        • <Text style={{ fontWeight: 'bold' }}>20%</Text> for Savings (investments, debt)
+      </Text>
+      <Text style={{ fontSize: 14, marginTop: 8 }}>
+        You can also add custom categories using the {"\n"}
+        <Text style={{ fontWeight: 'bold' }}>Add category</Text> button below to suit your lifestyle.
+      </Text>
+    </View>
+  }
+  confirmText="Got it!"
+/>
+      </SafeAreaView>
+    );
+  };
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
 
 const styles = StyleSheet.create({
   container: {
@@ -822,10 +1034,13 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
     borderWidth: 1,
   },
+<<<<<<< HEAD
   mainCategoryCard: {
     borderColor: "#A259FF",
     borderWidth: 2,
   },
+=======
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   formCard: {
     marginBottom: 16,
     backgroundColor: "#F7F7F7",
@@ -833,6 +1048,7 @@ const styles = StyleSheet.create({
     borderColor: "#A259FF",
     borderWidth: 1,
   },
+<<<<<<< HEAD
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -840,6 +1056,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+=======
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   input: {
     marginBottom: 12,
     backgroundColor: "#FFFFFF",
@@ -857,10 +1075,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   label: {
+<<<<<<< HEAD
     color: "#222222",
     fontSize: 14,
     marginBottom: 8,
     fontWeight: "bold",
+=======
+    color: "#888888",
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: "center",
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
   },
   summaryText: {
     color: "#888888",
@@ -888,6 +1113,7 @@ const styles = StyleSheet.create({
     borderColor: "#EB5757",
     borderWidth: 1,
   },
+<<<<<<< HEAD
   subcategoriesContainer: {
     marginTop: 8,
     paddingLeft: 16,
@@ -1048,6 +1274,8 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     fontStyle: 'italic',
   },
+=======
+>>>>>>> 3c4a371cd1c31a7fb48873943c1c293ece7a28db
 });
 
 export default BudgetCategoriesScreen;
