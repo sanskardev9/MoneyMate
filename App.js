@@ -123,15 +123,20 @@ import BudgetDetailsScreen from "./src/screens/BudgetDetailsScreen";
 import CategoryExpenseHistoryScreen from "./src/screens/CategoryExpenseHistoryScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ExpenseScreen from "./src/screens/ExpenseScreen";
+
 import ExpenseHistoryScreen from "./src/screens/ExpenseHistoryScreen";
 import UserProfileScreen from "./src/screens/UserProfileScreen";
 import AddProfileImageScreen from "./src/screens/AddProfileImageScreen";
+import ReportsScreen from "./src/screens/ReportsScreen";
+
 
 // Navigation & UI
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -223,36 +228,40 @@ export default function App() {
   }
 
   return (
-    <PaperProvider theme={DefaultTheme}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{ headerShown: false }}
-          initialRouteName={initialRoute}
-        >
-          {!session ? (
-            <Stack.Screen name="Auth" component={AuthScreen} />
-          ) : (
-            <>
-              <Stack.Screen name="Home" component={HomeScreen} />
-              <Stack.Screen
-                name="BudgetCategories"
-                component={BudgetCategoriesScreen}
-              />
-              <Stack.Screen name="BudgetDetails" component={BudgetDetailsScreen} />
-              <Stack.Screen name="CategoryExpenseHistory" component={CategoryExpenseHistoryScreen} />
-              <Stack.Screen name="Expense" component={ExpenseScreen} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-              <Stack.Screen
-                name="ExpenseHistory"
-                component={ExpenseHistoryScreen}
-              />
-            </>
-          )}
-        </Stack.Navigator>
-        <StatusBar style="auto" />
-        <Toast />
-      </NavigationContainer>
-    </PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider theme={DefaultTheme}>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{ headerShown: false }}
+            initialRouteName={initialRoute}
+          >
+            {!session ? (
+              <Stack.Screen name="Auth" component={AuthScreen} />
+            ) : (
+              <>
+                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen
+                  name="BudgetCategories"
+                  component={BudgetCategoriesScreen}
+                />
+                <Stack.Screen name="BudgetDetails" component={BudgetDetailsScreen} />
+                <Stack.Screen name="CategoryExpenseHistory" component={CategoryExpenseHistoryScreen} />
+                <Stack.Screen name="Expense" component={ExpenseScreen} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+                <Stack.Screen name="Reports" component={ReportsScreen} />
+        
+                <Stack.Screen
+                  name="ExpenseHistory"
+                  component={ExpenseHistoryScreen}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+          <StatusBar style="auto" />
+          <Toast />
+        </NavigationContainer>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }
