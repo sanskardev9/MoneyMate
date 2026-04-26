@@ -14,8 +14,10 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import Toast from "react-native-toast-message";
+import { useAppTheme } from "../context/ThemeContext";
 
 export default function HomeScreen({ navigation }) {
+  const { colors } = useAppTheme();
   const [income, setIncome] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +32,19 @@ export default function HomeScreen({ navigation }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    const { data: existingIncome } = await supabase
+      .from("incomes")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    if (existingIncome && existingIncome.length > 0) {
+      Alert.alert("Already set", "You already added your income.");
+      setLoading(false);
+      navigation.navigate("BudgetCategories");
+      return;
+    }
 
     const { error } = await supabase.from("incomes").insert([{
       user_id: user.id,
@@ -65,21 +80,21 @@ export default function HomeScreen({ navigation }) {
 
   const renderForm = () => (
     <>
-      <Text style={styles.title}>MoneyMate💸 </Text>
-      <Text style={styles.subtitle}>Where income starts evolving.</Text>
+      <Text style={[styles.title, { color: colors.text, textShadowColor: `${colors.primary}33` }]}>MoneyMate💸 </Text>
+      <Text style={[styles.subtitle, { color: colors.textMuted }]}>Where income starts evolving.</Text>
 
-      <Text style={styles.label}>What's your monthly income?</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>What's your monthly income?</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: colors.surface, color: colors.text, borderColor: colors.border }]}
         placeholder="Enter amount in ₹"
-        placeholderTextColor="#888888"
+        placeholderTextColor={colors.textMuted}
         keyboardType="numeric"
         value={income}
         onChangeText={setIncome}
       />
 
       <TouchableOpacity
-        style={[styles.button, loading && { opacity: 0.6 }]}
+        style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }, loading && { opacity: 0.6 }]}
         onPress={handleSubmit}
         disabled={loading}
       >
@@ -91,11 +106,11 @@ export default function HomeScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       keyboardVerticalOffset={64}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.container}>
+      <ScrollView contentContainerStyle={[styles.scrollContainer, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
           {renderForm()}
         </View>
       </ScrollView>

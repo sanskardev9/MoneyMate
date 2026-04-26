@@ -4,8 +4,16 @@ import { Card, Text, ActivityIndicator, TextInput, Button } from 'react-native-p
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { supabase } from '../lib/supabase';
 import MainScreenWrapper from '../components/MainScreenWrapper';
+import { getMonthBounds } from '../lib/monthlyBudget';
+import { useAppTheme } from '../context/ThemeContext';
+import { useTabShell } from '../context/TabShellContext';
+import FormBottomSheet from '../components/FormBottomSheet';
+import useCompactLayout from '../hooks/useCompactLayout';
 
 export default function BudgetDetailsScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const tabShell = useTabShell();
+  const isCompact = useCompactLayout();
   const [categories, setCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState(0);
@@ -101,10 +109,13 @@ export default function BudgetDetailsScreen({ navigation }) {
 
   const fetchExpenses = async () => {
     const user = await supabase.auth.getUser();
+    const { startIso, endIso } = getMonthBounds();
     const { data } = await supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', user.data.user.id);
+      .eq('user_id', user.data.user.id)
+      .gte('created_at', startIso)
+      .lt('created_at', endIso);
     setExpenses(data || []);
   };
 
@@ -377,9 +388,9 @@ export default function BudgetDetailsScreen({ navigation }) {
   if (isLoading) {
     return (
       <MainScreenWrapper navigation={navigation} currentRoute="BudgetDetails">
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#A259FF" />
-          <Text style={styles.loadingText}>Loading your budget details...</Text>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your budget details...</Text>
         </View>
       </MainScreenWrapper>
     );
@@ -389,30 +400,36 @@ export default function BudgetDetailsScreen({ navigation }) {
     <MainScreenWrapper navigation={navigation} currentRoute="BudgetDetails">
       <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-       style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 50 }}
+       style={{
+         flex: 1,
+         paddingHorizontal: isCompact ? 12 : 16,
+         paddingTop: isCompact ? 12 : 16,
+         paddingBottom: tabShell ? 0 : 50,
+         backgroundColor: colors.background,
+       }}
       keyboardVerticalOffset={64}
     >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Budget Details</Text>
+          <Text style={[styles.headerTitle, { color: colors.text, fontSize: isCompact ? 24 : 28 }]}>Budget Details</Text>
         </View>
 
         {/* Summary Card */}
-        <Card style={styles.summaryCard}>
+        <Card style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: isCompact ? 16 : 12 }]}>
           <Card.Content>
-            <Text style={styles.summaryTitle}>Total Overview</Text>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>Total Overview</Text>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Income</Text>
-                <Text style={styles.summaryValue}>₹{income.toLocaleString('en-IN')}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Income</Text>
+                <Text style={[styles.summaryValue, { color: colors.primary }]}>₹{income.toLocaleString('en-IN')}</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Allocated</Text>
-                <Text style={styles.summaryValue}>₹{getTotalAllocated().toLocaleString('en-IN')}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Allocated</Text>
+                <Text style={[styles.summaryValue, { color: colors.primary }]}>₹{getTotalAllocated().toLocaleString('en-IN')}</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Spent</Text>
-                <Text style={styles.summaryValue}>₹{getTotalSpent().toLocaleString('en-IN')}</Text>
+                <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Spent</Text>
+                <Text style={[styles.summaryValue, { color: colors.primary }]}>₹{getTotalSpent().toLocaleString('en-IN')}</Text>
               </View>
             </View>
           </Card.Content>
@@ -421,12 +438,12 @@ export default function BudgetDetailsScreen({ navigation }) {
         {/* Categories List */}
         <View style={styles.categoriesContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Category Breakdown</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Category Breakdown</Text>
             <TouchableOpacity 
-              style={styles.addButton}
+              style={[styles.addButton, { backgroundColor: colors.surface, borderColor: colors.primary }]}
               onPress={handleAddCategory}
             >
-              <Icon name="plus" size={20} color="#A259FF" />
+              <Icon name="plus" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
           <FlatList
@@ -447,57 +464,73 @@ export default function BudgetDetailsScreen({ navigation }) {
                       allocatedAmount: Number(item.amount)
                     })}
                   >
-                    <Card style={[styles.categoryCard, styles.mainCategoryCard]}>
+                    <Card style={[styles.categoryCard, styles.mainCategoryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Card.Content>
                       <View style={styles.categoryHeader}>
                         <View>
-                          <Text style={[styles.categoryName, styles.mainCategoryName]}>{item.name}</Text>
-                          <Text style={styles.categoryAmount}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
+                          <Text style={[styles.categoryName, styles.mainCategoryName, { color: colors.text }]}>{item.name}</Text>
+                          <Text style={[styles.categoryAmount, { color: colors.primary }]}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
                         </View>
                         <View style={styles.categoryActions}>
-                          <TouchableOpacity onPress={() => handleAddSubcategory(item)} style={{ marginRight: 8 }}>
-                            <Icon name="plus" size={20} color="#A259FF" />
+                          <TouchableOpacity
+                            onPress={(event) => {
+                              event?.stopPropagation?.();
+                              handleAddSubcategory(item);
+                            }}
+                            style={{ marginRight: 8 }}
+                          >
+                            <Icon name="plus" size={20} color={colors.primary} />
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleEditCategory(item)} style={{ marginRight: 8 }}>
-                            <Icon name="pencil" size={20} color="#A259FF" />
+                          <TouchableOpacity
+                            onPress={(event) => {
+                              event?.stopPropagation?.();
+                              handleEditCategory(item);
+                            }}
+                            style={{ marginRight: 8 }}
+                          >
+                            <Icon name="pencil" size={20} color={colors.primary} />
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleDeleteCategory(item)}>
-                            <Icon name="delete" size={20} color="#EB5757" />
+                          <TouchableOpacity
+                            onPress={(event) => {
+                              event?.stopPropagation?.();
+                              handleDeleteCategory(item);
+                            }}
+                          >
+                            <Icon name="delete" size={20} color={colors.danger} />
                           </TouchableOpacity>
                         </View>
                       </View>
                       
                       <View style={styles.spendingRow}>
                         <View style={styles.spendingItem}>
-                          <Text style={styles.spendingLabel}>Spent</Text>
-                          <Text style={styles.spendingValue}>₹{spent.toLocaleString('en-IN')}</Text>
+                          <Text style={[styles.spendingLabel, { color: colors.textMuted }]}>Spent</Text>
+                          <Text style={[styles.spendingValue, { color: colors.text }]}>₹{spent.toLocaleString('en-IN')}</Text>
                         </View>
                         <View style={styles.spendingItem}>
-                          <Text style={styles.spendingLabel}>Remaining</Text>
-                          <Text style={[styles.spendingValue, remaining < 0 && styles.overspent]}>
+                          <Text style={[styles.spendingLabel, { color: colors.textMuted }]}>Remaining</Text>
+                          <Text style={[styles.spendingValue, { color: colors.text }, remaining < 0 && { color: colors.danger }]}>
                             ₹{remaining.toLocaleString('en-IN')}
                           </Text>
                         </View>
                       </View>
 
                       <View style={styles.progressContainer}>
-                        <View style={styles.progressBar}>
+                        <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
                           <View 
                             style={[
                               styles.progressFill, 
-                              { width: `${Math.min(spentPercentage, 100)}%` },
-                              spentPercentage > 100 && styles.progressOverspent
+                              { width: `${Math.min(spentPercentage, 100)}%`, backgroundColor: spentPercentage > 100 ? colors.danger : colors.primary },
                             ]} 
                           />
                         </View>
-                        <Text style={styles.progressText}>{Math.round(spentPercentage)}% used</Text>
+                        <Text style={[styles.progressText, { color: colors.textMuted }]}>{Math.round(spentPercentage)}% used</Text>
                       </View>
 
                       {/* Subcategories nested within parent card */}
                       {subcategories.length > 0 && (
-                        <View style={styles.subcategoriesContainer}>
+                        <View style={[styles.subcategoriesContainer, { borderTopColor: colors.border }]}>
                           <View style={styles.subcategoriesHeader}>
-                            <Text style={styles.subcategoriesTitle}>Subcategories</Text>
+                            <Text style={[styles.subcategoriesTitle, { color: colors.textMuted }]}>Subcategories</Text>
                           </View>
                           {subcategories.map((subcat) => {
                             const subSpent = calculateCategorySpending(subcat.id);
@@ -513,44 +546,54 @@ export default function BudgetDetailsScreen({ navigation }) {
                                   allocatedAmount: Number(subcat.amount)
                                 })}
                               >
-                                <View style={styles.subcategoryItem}>
+                                <View style={[styles.subcategoryItem, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
                                   <View style={styles.subcategoryInfo}>
-                                    <Text style={styles.subcategoryName}>{subcat.name}</Text>
-                                    <Text style={styles.subcategoryAmount}>₹{Number(subcat.amount).toLocaleString('en-IN')}</Text>
+                                    <Text style={[styles.subcategoryName, { color: colors.text }]}>{subcat.name}</Text>
+                                    <Text style={[styles.subcategoryAmount, { color: colors.primary }]}>₹{Number(subcat.amount).toLocaleString('en-IN')}</Text>
                                   </View>
                                   <View style={styles.subcategoryActions}>
-                                    <TouchableOpacity onPress={() => handleEditCategory(subcat)} style={{ marginRight: 8 }}>
-                                      <Icon name="pencil" size={16} color="#A259FF" />
+                                    <TouchableOpacity
+                                      onPress={(event) => {
+                                        event?.stopPropagation?.();
+                                        handleEditCategory(subcat);
+                                      }}
+                                      style={{ marginRight: 8 }}
+                                    >
+                                      <Icon name="pencil" size={16} color={colors.primary} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => handleDeleteCategory(subcat)}>
-                                      <Icon name="delete" size={16} color="#EB5757" />
+                                    <TouchableOpacity
+                                      onPress={(event) => {
+                                        event?.stopPropagation?.();
+                                        handleDeleteCategory(subcat);
+                                      }}
+                                    >
+                                      <Icon name="delete" size={16} color={colors.danger} />
                                     </TouchableOpacity>
                                   </View>
                                   
                                   <View style={styles.subcategorySpendingRow}>
                                     <View style={styles.subcategorySpendingItem}>
-                                      <Text style={styles.subcategorySpendingLabel}>Spent</Text>
-                                      <Text style={styles.subcategorySpendingValue}>₹{subSpent.toLocaleString('en-IN')}</Text>
+                                      <Text style={[styles.subcategorySpendingLabel, { color: colors.textMuted }]}>Spent</Text>
+                                      <Text style={[styles.subcategorySpendingValue, { color: colors.text }]}>₹{subSpent.toLocaleString('en-IN')}</Text>
                                     </View>
                                     <View style={styles.subcategorySpendingItem}>
-                                      <Text style={styles.subcategorySpendingLabel}>Remaining</Text>
-                                      <Text style={[styles.subcategorySpendingValue, subRemaining < 0 && styles.overspent]}>
+                                      <Text style={[styles.subcategorySpendingLabel, { color: colors.textMuted }]}>Remaining</Text>
+                                      <Text style={[styles.subcategorySpendingValue, { color: colors.text }, subRemaining < 0 && { color: colors.danger }]}>
                                         ₹{subRemaining.toLocaleString('en-IN')}
                                       </Text>
                                     </View>
                                   </View>
 
                                   <View style={styles.subcategoryProgressContainer}>
-                                    <View style={styles.subcategoryProgressBar}>
+                                    <View style={[styles.subcategoryProgressBar, { backgroundColor: colors.border }]}>
                                       <View 
                                         style={[
                                           styles.subcategoryProgressFill, 
-                                          { width: `${Math.min(subSpentPercentage, 100)}%` },
-                                          subSpentPercentage > 100 && styles.progressOverspent
+                                          { width: `${Math.min(subSpentPercentage, 100)}%`, backgroundColor: subSpentPercentage > 100 ? colors.danger : colors.primary },
                                         ]} 
                                       />
                                     </View>
-                                    <Text style={styles.subcategoryProgressText}>{Math.round(subSpentPercentage)}% used</Text>
+                                    <Text style={[styles.subcategoryProgressText, { color: colors.textMuted }]}>{Math.round(subSpentPercentage)}% used</Text>
                                   </View>
                                 </View>
                               </TouchableOpacity>
@@ -567,153 +610,19 @@ export default function BudgetDetailsScreen({ navigation }) {
               );
             }}
             style={{ marginBottom: 16 }}
-            contentContainerStyle={{ paddingBottom: 55}}
+            contentContainerStyle={{ paddingBottom: tabShell ? 110 : 55 }}
           />
         </View>
-
-        {/* Add/Edit Category Form */}
-        {showForm && (
-          <Card style={styles.formCard}>
-                         <Card.Content>
-               <Text style={styles.formTitle}>
-                 {editingCategory ? 'Edit Category' : 
-                  formData.parent_id ? 'Add Subcategory' : 'Add Category'}
-               </Text>
-               
-               {/* Show parent category info when adding subcategory */}
-               {formData.parent_id && !editingCategory && (
-                 <View style={{ marginBottom: 16 }}>
-                   <Text style={styles.label}>Parent Category</Text>
-                   <View style={styles.parentCategoryInfo}>
-                     <Text style={styles.parentCategoryName}>
-                       {categories.find(cat => cat.id === formData.parent_id)?.name}
-                     </Text>
-                     <Text style={styles.remainingBudgetText}>
-                       Remaining Budget: ₹{getRemainingBudget(formData.parent_id).toLocaleString('en-IN')}
-                     </Text>
-                   </View>
-                 </View>
-               )}
-               
-               {/* Parent Category Selection - Only show when adding main category */}
-               {!editingCategory && !formData.parent_id && (
-                 <View style={{ marginBottom: 16 }}>
-                   <Text style={styles.label}>Parent Category (Optional)</Text>
-                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                     <TouchableOpacity
-                       style={[
-                         styles.categoryChip,
-                         !selectedParentCategory && styles.selectedCategoryChip
-                       ]}
-                       onPress={() => {
-                         setSelectedParentCategory(null);
-                         setFormData({ ...formData, parent_id: null });
-                       }}
-                     >
-                       <Text style={[
-                         styles.categoryChipText,
-                         !selectedParentCategory && styles.selectedCategoryChipText
-                       ]}>
-                         Main Category
-                       </Text>
-                     </TouchableOpacity>
-                     {getMainCategories().map((cat) => (
-                       <TouchableOpacity
-                         key={cat.id}
-                         style={[
-                           styles.categoryChip,
-                           selectedParentCategory === cat.id && styles.selectedCategoryChip
-                         ]}
-                         onPress={() => {
-                           setSelectedParentCategory(cat.id);
-                           setFormData({ ...formData, parent_id: cat.id });
-                         }}
-                       >
-                         <Text style={[
-                           styles.categoryChipText,
-                           selectedParentCategory === cat.id && styles.selectedCategoryChipText
-                         ]}>
-                           {cat.name}
-                         </Text>
-                       </TouchableOpacity>
-                     ))}
-                   </View>
-                 </View>
-               )}
-              
-              <TextInput
-                label="Category Name"
-                value={formData.name}
-                onChangeText={(text) => setFormData({ ...formData, name: text })}
-                style={styles.input}
-                placeholderTextColor="#888888"
-                theme={{
-                  colors: {
-                    text: "#222222",
-                    primary: "#A259FF",
-                    placeholder: "#888888",
-                    background: "#FFFFFF",
-                  },
-                }}
-                textColor="#222222"
-              />
-
-              <TextInput
-                label="Amount"
-                value={formData.amount}
-                onChangeText={(text) => setFormData({ ...formData, amount: text })}
-                keyboardType="numeric"
-                style={styles.input}
-                placeholderTextColor="#888888"
-                theme={{
-                  colors: {
-                    text: "#222222",
-                    primary: "#A259FF",
-                    placeholder: "#888888",
-                    background: "#FFFFFF",
-                  },
-                }}
-                textColor="#222222"
-              />
-
-              <View style={{ flexDirection: 'row', marginTop: 16 }}>
-                <Button
-                  mode="contained"
-                  onPress={handleAddOrEditCategory}
-                  style={styles.saveButton}
-                  labelStyle={{ color: "#fff", fontWeight: "bold" }}
-                  loading={loading}
-                >
-                  {loading ? (editingCategory ? "Updating..." : "Adding...") : (editingCategory ? "Update Category" : "Add Category")}
-                </Button>
-                <View style={{ width: 12 }} />
-                <Button
-                  mode="outlined"
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowForm(false);
-                    setFormData({ name: '', amount: '', parent_id: null });
-                    setEditingCategory(null);
-                    setSelectedParentCategory(null);
-                  }}
-                  labelStyle={{ color: "#888888", fontWeight: "bold" }}
-                >
-                  Cancel
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        )}
 
         {/* Enhanced Delete Category Modal */}
         {showDeleteModal && (
           <View style={styles.deleteModalOverlay}>
-            <View style={styles.deleteModalContainer}>
-              <Text style={styles.deleteModalTitle}>Delete Category</Text>
-              <Text style={styles.deleteModalSubtitle}>
+            <View style={[styles.deleteModalContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.deleteModalTitle, { color: colors.text }]}>Delete Category</Text>
+              <Text style={[styles.deleteModalSubtitle, { color: colors.textMuted }]}>
                 Are you sure you want to delete "{categoryToDelete?.name}"?
               </Text>
-              <Text style={styles.deleteModalWarning}>
+              <Text style={[styles.deleteModalWarning, { color: colors.danger }]}>
                 ⚠️ This will also affect all expenses in this category.
               </Text>
 
@@ -721,12 +630,14 @@ export default function BudgetDetailsScreen({ navigation }) {
                 <TouchableOpacity
                   style={[
                     styles.deleteOption,
-                    deleteAction === 'delete' && styles.selectedDeleteOption
+                    { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                    deleteAction === 'delete' && { backgroundColor: colors.primary, borderColor: colors.primary }
                   ]}
                   onPress={() => setDeleteAction('delete')}
                 >
                   <Text style={[
                     styles.deleteOptionText,
+                    { color: colors.text },
                     deleteAction === 'delete' && styles.selectedDeleteOptionText
                   ]}>
                     Delete all expenses
@@ -736,12 +647,14 @@ export default function BudgetDetailsScreen({ navigation }) {
                 <TouchableOpacity
                   style={[
                     styles.deleteOption,
-                    deleteAction === 'move' && styles.selectedDeleteOption
+                    { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                    deleteAction === 'move' && { backgroundColor: colors.primary, borderColor: colors.primary }
                   ]}
                   onPress={() => setDeleteAction('move')}
                 >
                   <Text style={[
                     styles.deleteOptionText,
+                    { color: colors.text },
                     deleteAction === 'move' && styles.selectedDeleteOptionText
                   ]}>
                     Move expenses to another category
@@ -753,7 +666,7 @@ export default function BudgetDetailsScreen({ navigation }) {
 
               {deleteAction === 'move' && (
                 <View style={styles.targetCategorySection}>
-                  <Text style={styles.targetCategoryLabel}>Select target category:</Text>
+                  <Text style={[styles.targetCategoryLabel, { color: colors.textMuted }]}>Select target category:</Text>
                   <View style={styles.targetCategoryList}>
                     {categories
                       .filter(cat => cat.id !== categoryToDelete?.id)
@@ -762,12 +675,14 @@ export default function BudgetDetailsScreen({ navigation }) {
                           key={cat.id}
                           style={[
                             styles.targetCategoryOption,
+                            { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
                             targetCategory === cat.id && styles.selectedTargetCategory
                           ]}
                           onPress={() => setTargetCategory(cat.id)}
                         >
                           <Text style={[
                             styles.targetCategoryOptionText,
+                            { color: colors.text },
                             targetCategory === cat.id && styles.selectedTargetCategoryText
                           ]}>
                             {cat.name}
@@ -780,7 +695,7 @@ export default function BudgetDetailsScreen({ navigation }) {
 
               <View style={styles.deleteModalButtons}>
                 <TouchableOpacity
-                  style={styles.cancelDeleteButton}
+                  style={[styles.cancelDeleteButton, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
                   onPress={() => {
                     setShowDeleteModal(false);
                     setCategoryToDelete(null);
@@ -788,11 +703,12 @@ export default function BudgetDetailsScreen({ navigation }) {
                     setTargetCategory('');
                   }}
                 >
-                  <Text style={styles.cancelDeleteText}>Cancel</Text>
+                  <Text style={[styles.cancelDeleteText, { color: colors.textMuted }]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.confirmDeleteButton,
+                    { backgroundColor: colors.danger },
                     !deleteAction && styles.disabledDeleteButton
                   ]}
                   onPress={confirmDeleteCategory}
@@ -811,7 +727,158 @@ export default function BudgetDetailsScreen({ navigation }) {
         )}
       {/* </SafeAreaView> */}
 
-     
+        <FormBottomSheet
+          visible={showForm}
+          title={
+            editingCategory
+              ? "Edit Category"
+              : formData.parent_id
+              ? "Add Subcategory"
+              : "Add Category"
+          }
+          snapPoints={[isCompact ? "88%" : "65%"]}
+          onClose={() => {
+            setShowForm(false);
+            setFormData({ name: "", amount: "", parent_id: null });
+            setEditingCategory(null);
+            setSelectedParentCategory(null);
+          }}
+        >
+          {formData.parent_id && !editingCategory && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Parent Category</Text>
+              <View style={[styles.parentCategoryInfo, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+                <Text style={[styles.parentCategoryName, { color: colors.text }]}>
+                  {categories.find(cat => cat.id === formData.parent_id)?.name}
+                </Text>
+                <Text style={[styles.remainingBudgetText, { color: colors.textMuted }]}>
+                  Remaining Budget: ₹{getRemainingBudget(formData.parent_id).toLocaleString('en-IN')}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {!editingCategory && !formData.parent_id && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={[styles.label, { color: colors.textMuted }]}>Parent Category (Optional)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                    !selectedParentCategory && { backgroundColor: colors.primary, borderColor: colors.primary }
+                  ]}
+                  onPress={() => {
+                    setSelectedParentCategory(null);
+                    setFormData({ ...formData, parent_id: null });
+                  }}
+                >
+                  <Text style={[
+                    styles.categoryChipText,
+                    { color: colors.text },
+                    !selectedParentCategory && styles.selectedCategoryChipText
+                  ]}>
+                    Main Category
+                  </Text>
+                </TouchableOpacity>
+                {getMainCategories().map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.categoryChip,
+                      { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                      selectedParentCategory === cat.id && { backgroundColor: colors.primary, borderColor: colors.primary }
+                    ]}
+                    onPress={() => {
+                      setSelectedParentCategory(cat.id);
+                      setFormData({ ...formData, parent_id: cat.id });
+                    }}
+                  >
+                    <Text style={[
+                      styles.categoryChipText,
+                      { color: colors.text },
+                      selectedParentCategory === cat.id && styles.selectedCategoryChipText
+                    ]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <TextInput
+            mode="outlined"
+            label="Category Name"
+            value={formData.name}
+            onChangeText={(text) => setFormData({ ...formData, name: text })}
+            style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+            placeholderTextColor={colors.textMuted}
+            theme={{
+              colors: {
+                text: colors.text,
+                primary: colors.primary,
+                outline: colors.border,
+                onSurfaceVariant: colors.textMuted,
+                onSurface: colors.text,
+                placeholder: colors.textMuted,
+                background: colors.surfaceMuted,
+                surface: colors.surfaceMuted,
+              },
+            }}
+            textColor={colors.text}
+          />
+
+          <TextInput
+            mode="outlined"
+            label="Amount"
+            value={formData.amount}
+            onChangeText={(text) => setFormData({ ...formData, amount: text })}
+            keyboardType="numeric"
+            style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+            placeholderTextColor={colors.textMuted}
+            theme={{
+              colors: {
+                text: colors.text,
+                primary: colors.primary,
+                outline: colors.border,
+                onSurfaceVariant: colors.textMuted,
+                onSurface: colors.text,
+                placeholder: colors.textMuted,
+                background: colors.surfaceMuted,
+                surface: colors.surfaceMuted,
+              },
+            }}
+            textColor={colors.text}
+          />
+
+          <View style={{ flexDirection: 'row', marginTop: 16 }}>
+            <Button
+              mode="contained"
+              onPress={handleAddOrEditCategory}
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              labelStyle={{ color: "#fff", fontWeight: "bold" }}
+              loading={loading}
+            >
+              {loading ? (editingCategory ? "Updating..." : "Adding...") : (editingCategory ? "Update Category" : "Add Category")}
+            </Button>
+            <View style={{ width: 12 }} />
+            <Button
+              mode="outlined"
+              style={[styles.cancelButton, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
+              onPress={() => {
+                setShowForm(false);
+                setFormData({ name: '', amount: '', parent_id: null });
+                setEditingCategory(null);
+                setSelectedParentCategory(null);
+              }}
+              labelStyle={{ color: colors.textMuted, fontWeight: "bold" }}
+            >
+              Cancel
+            </Button>
+          </View>
+        </FormBottomSheet>
+
           </KeyboardAvoidingView>
     </MainScreenWrapper>
   );
@@ -832,7 +899,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#888888',
-    fontWeight: '600',
+    fontWeight: '300',
   },
   header: {
     marginBottom: 20,
@@ -1016,10 +1083,8 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderColor: '#A259FF',
+    backgroundColor: 'transparent',
     color: '#222222',
-    borderWidth: 1,
     borderRadius: 8,
   },
   saveButton: {

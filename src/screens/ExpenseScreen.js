@@ -33,8 +33,16 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { supabase } from "../lib/supabase";
 import Toast from "react-native-toast-message";
 import MainScreenWrapper from "../components/MainScreenWrapper";
+import { getMonthBounds } from "../lib/monthlyBudget";
+import { useAppTheme } from "../context/ThemeContext";
+import { useTabShell } from "../context/TabShellContext";
+import FormBottomSheet from "../components/FormBottomSheet";
+import useCompactLayout from "../hooks/useCompactLayout";
 
 export default function ExpenseScreen({ navigation }) {
+  const { colors, isDarkMode } = useAppTheme();
+  const tabShell = useTabShell();
+  const isCompact = useCompactLayout();
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -89,6 +97,26 @@ export default function ExpenseScreen({ navigation }) {
     "Don’t tell me what you value, show me your budget, and I’ll tell you what you value. – Joe Biden",
     "The quickest way to double your money is to fold it in half and put it in your back pocket.",
     "A budget is telling your money where to go instead of wondering where it went. – Dave Ramsey",
+    "Small daily savings are the first step toward big financial freedom.",
+    "Every rupee with a purpose is a rupee working for you.",
+    "Wealth grows when your spending obeys your plan.",
+    "Discipline today builds comfort tomorrow.",
+    "Saving is how you buy peace of mind in advance.",
+    "A strong budget gives every goal a place to live.",
+    "Financial progress is usually quiet, steady, and consistent.",
+    "Spend with intention, save with ambition.",
+    "The habit of tracking money is the habit of taking control.",
+    "Money flows best when you tell it where to go.",
+    "Good budgets do not restrict your life, they direct it.",
+    "The little choices you repeat shape the future you afford.",
+    "Saving is not about missing out, it is about choosing better later.",
+    "Your future self notices every smart money decision you make today.",
+    "Rich habits begin long before rich balances.",
+    "A planned expense feels lighter than a surprise one.",
+    "Consistency beats intensity when it comes to money.",
+    "Track it, trim it, grow it.",
+    "Budgeting is self-care for your finances.",
+    "Financial clarity turns stress into strategy.",
   ];
 
   const [quote, setQuote] = useState("");
@@ -144,9 +172,11 @@ export default function ExpenseScreen({ navigation }) {
   };
 
   const fetchCategories = async () => {
+    const user = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("budget_categories")
       .select("id, name, parent_id")
+      .eq("user_id", user.data.user.id)
       .order("created_at", { ascending: true });
     if (!error && data && data.length > 0) {
       setCategories(data);
@@ -209,10 +239,13 @@ export default function ExpenseScreen({ navigation }) {
 
   const fetchExpenses = async () => {
     const user = await supabase.auth.getUser();
+    const { startIso, endIso } = getMonthBounds();
     const { data } = await supabase
       .from("expenses")
       .select("*")
       .eq("user_id", user.data.user.id)
+      .gte("created_at", startIso)
+      .lt("created_at", endIso)
       .order("created_at", { ascending: false });
     setExpenses(data || []);
   };
@@ -375,9 +408,9 @@ export default function ExpenseScreen({ navigation }) {
   if (isLoading) {
     return (
       <MainScreenWrapper navigation={navigation} currentRoute="Expense">
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#A259FF" />
-          <Text style={styles.loadingText}>Loading your expenses...</Text>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your expenses...</Text>
         </View>
         <Toast />
       </MainScreenWrapper>
@@ -395,9 +428,10 @@ export default function ExpenseScreen({ navigation }) {
           <View
             style={{
               flex: 1,
-              paddingHorizontal: 16,
-              paddingTop: 16,
-              paddingBottom: 55,
+              paddingHorizontal: isCompact ? 12 : 16,
+              paddingTop: isCompact ? 12 : 16,
+              paddingBottom: tabShell ? 0 : 55,
+              backgroundColor: colors.background,
             }}
           >
             {/* Header with dynamic greeting and logout */}
@@ -406,28 +440,37 @@ export default function ExpenseScreen({ navigation }) {
                 marginBottom: 8,
                 flexDirection: "row",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: "start`",
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text style={styles.greetingLarge}>{`${getGreeting()}, ${
+                <Text style={[styles.greetingLarge, { color: colors.text, fontSize: isCompact ? 22 : 26, marginBottom: isCompact ? 6 : 8 }]}>{`${getGreeting()}, ${
                   userName.split(" ")[0]
                 }`}</Text>
-                <Text style={styles.quote}>{quote}</Text>
+                <Text style={[styles.quote, { color: colors.textMuted, fontSize: isCompact ? 14 : 16, lineHeight: isCompact ? 20 : 24 }]}>{quote}</Text>
               </View>
               <TouchableOpacity
-                style={styles.settingsButton}
+                style={[
+                  styles.settingsButton,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                    width: isCompact ? 35 : 35 ,
+                    height: isCompact ? 35 : 35,
+                    borderRadius: isCompact ? 14 : 16,
+                  },
+                ]}
                 onPress={() => navigation.navigate("Settings")}
               >
-                <Icon name="cog" size={20} color="#888888" />
+                <Icon name="cog" size={isCompact ? 16 : 18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             {/* Balance Card */}
-            <Card style={styles.summaryCard}>
+            <Card style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: isCompact ? 18 : 12 }]}>
               <Card.Content>
-                <Text style={styles.balanceLabel}>Total Income</Text>
-                <Text style={styles.balanceValue}>
+                <Text style={[styles.balanceLabel, { color: colors.text, fontSize: isCompact ? 14 : 16 }]}>Total Income</Text>
+                <Text style={[styles.balanceValue, { color: colors.primary, fontSize: isCompact ? 28 : 32 }]}>
                   {`₹${income.toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -448,7 +491,15 @@ export default function ExpenseScreen({ navigation }) {
                   marginBottom: 8,
                 }}
               >
-                <Text style={styles.sectionTitle}>Expense History</Text>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { fontSize: isCompact ? 16 : 18 },
+                    { color: isDarkMode ? "#F4EEFF" : colors.text },
+                  ]}
+                >
+                  Expense History
+                </Text>
               </View>
 
               {expenses.length > 0 ? (
@@ -456,13 +507,13 @@ export default function ExpenseScreen({ navigation }) {
                   sections={sections}
                   keyExtractor={(item) => item.id}
                   renderSectionHeader={({ section: { title } }) => (
-                    <Text
-                      style={{
+                <Text
+                  style={{
                         fontWeight: "bold",
                         fontSize: 16,
                         marginTop: 16,
                         marginBottom: 4,
-                        color: "#222",
+                        color: colors.text,
                       }}
                     >
                       {formatSectionDate(title)}
@@ -504,6 +555,9 @@ export default function ExpenseScreen({ navigation }) {
                           marginBottom: 12,
                           marginHorizontal: 4,
                           borderRadius: 12,
+                          backgroundColor: colors.surface,
+                          borderWidth: 1,
+                          borderColor: colors.border,
                         }}
                       >
                         <Card.Content>
@@ -518,21 +572,21 @@ export default function ExpenseScreen({ navigation }) {
                               <Text
                                 style={{
                                   fontWeight: "600",
-                                  color: "#222",
+                                  color: colors.text,
                                   fontSize: 16,
                                   marginBottom: 4,
                                 }}
                               >
                                 {item.description || "No description"}
                               </Text>
-                              <Text style={{ color: "#888", fontSize: 14 }}>
+                              <Text style={{ color: colors.textMuted, fontSize: 14 }}>
                                 {categoryNameLookup(item.category_id)}
                               </Text>
                             </View>
                             <View style={{ alignItems: "flex-end" }}>
                               <Text
                                 style={{
-                                  color: "#A259FF",
+                                  color: colors.primary,
                                   fontWeight: "bold",
                                   fontSize: 18,
                                   marginBottom: 4,
@@ -540,7 +594,7 @@ export default function ExpenseScreen({ navigation }) {
                               >
                                 {`₹${item.amount}`}
                               </Text>
-                              <Text style={{ color: "#bbb", fontSize: 12 }}>
+                              <Text style={{ color: colors.textMuted, fontSize: 12 }}>
                                 {formatTime(item.created_at)}
                               </Text>
                             </View>
@@ -549,142 +603,29 @@ export default function ExpenseScreen({ navigation }) {
                       </Card>
                     </TouchableOpacity>
                   )}
-                  contentContainerStyle={{ paddingBottom: 120 }}
+                  contentContainerStyle={{ paddingBottom: tabShell ? 110 : 120 }}
                   stickySectionHeadersEnabled={false}
                 />
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyMessage}>
+                  <Text
+                    style={[
+                      styles.emptyMessage,
+                      { color: isDarkMode ? "#D9D0F5" : colors.textMuted },
+                    ]}
+                  >
                     Expense? Let's MoneyMate 💸
                   </Text>
                 </View>
               )}
             </View>
-            {/* Add/Edit Expense Form */}
-            {showForm && (
-              <Card style={styles.formCard}>
-                <Card.Content>
-                  <Text style={styles.formTitle}>
-                    {editingExpenseId ? "Edit Expense" : "Add Expense"}
-                  </Text>
-                  {/* Category Selection */}
-                  <View style={{ marginBottom: 16 }}>
-                    <Text style={styles.label}>Category</Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        marginTop: 8,
-                      }}
-                    >
-                      {getAllCategoriesForSelection().map((cat) => (
-                        <TouchableOpacity
-                          key={cat.id}
-                          style={[
-                            styles.categoryChip,
-                            selectedCategory === cat.id &&
-                              styles.selectedCategoryChip,
-                          ]}
-                          onPress={() => setSelectedCategory(cat.id)}
-                        >
-                          <Text
-                            style={[
-                              styles.categoryChipText,
-                              selectedCategory === cat.id &&
-                                styles.selectedCategoryChipText,
-                            ]}
-                          >
-                            {cat.displayName || cat.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                  {/* Amount Input */}
-                  <TextInput
-                    label="Amount"
-                    value={formData.amount}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, amount: text })
-                    }
-                    keyboardType="numeric"
-                    style={styles.input}
-                    placeholderTextColor="#888888"
-                    theme={{
-                      colors: {
-                        text: "#222222",
-                        primary: "#A259FF",
-                        placeholder: "#888888",
-                        background: "#FFFFFF",
-                      },
-                    }}
-                    textColor="#222222"
-                    left={
-                      <TextInput.Icon icon="currency-inr" color="#A259FF" />
-                    }
-                  />
-                  {/* Description Input */}
-                  <TextInput
-                    label="Description (optional)"
-                    value={formData.description}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, description: text })
-                    }
-                    style={styles.input}
-                    placeholderTextColor="#888888"
-                    theme={{
-                      colors: {
-                        text: "#222222",
-                        primary: "#A259FF",
-                        placeholder: "#888888",
-                        background: "#FFFFFF",
-                      },
-                    }}
-                    textColor="#222222"
-                    left={
-                      <TextInput.Icon icon="note-outline" color="#A259FF" />
-                    }
-                  />
-                  {/* Action Buttons */}
-                  <View style={{ flexDirection: "row", marginTop: 16 }}>
-                    <Button
-                      mode="contained"
-                      onPress={handleAddOrEditExpense}
-                      style={styles.saveButton}
-                      labelStyle={{ color: "#fff", fontWeight: "bold" }}
-                      loading={loading}
-                    >
-                      {loading
-                        ? editingExpenseId
-                          ? "Updating..."
-                          : "Adding..."
-                        : editingExpenseId
-                        ? "Update Expense"
-                        : "Add Expense"}
-                    </Button>
-                    <View style={{ width: 12 }} />
-                    <Button
-                      mode="outlined"
-                      style={styles.cancelButton}
-                      onPress={() => {
-                        setShowForm(false);
-                        setFormData({ amount: "", description: "" });
-                        setSelectedCategory(categories[0]?.id || "");
-                        setEditingExpenseId(null);
-                      }}
-                      labelStyle={{ color: "#888888", fontWeight: "bold" }}
-                    >
-                      Cancel
-                    </Button>
-                  </View>
-                </Card.Content>
-              </Card>
-            )}
-
             {/* Add Expense FAB */}
             {!showForm && (
               <FAB
-                style={styles.fabFooter}
+                style={[
+                  styles.fabFooter,
+                  { backgroundColor: colors.primary, bottom: tabShell ? (isCompact ? 82 : 88) : 100, transform: [{ scale: isCompact ? 0.9 : 1 }] },
+                ]}
                 icon="plus"
                 onPress={() => setShowForm(true)}
                 color="#fff"
@@ -692,10 +633,137 @@ export default function ExpenseScreen({ navigation }) {
             )}
           </View>
         </TouchableWithoutFeedback>
+        <FormBottomSheet
+          visible={showForm}
+          title={editingExpenseId ? "Edit Expense" : "Add Expense"}
+          onClose={() => {
+            setShowForm(false);
+            setFormData({ amount: "", description: "" });
+            setSelectedCategory(categories[0]?.id || "");
+            setEditingExpenseId(null);
+          }}
+        >
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.label, { color: colors.text }]}>Category</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                marginTop: 8,
+              }}
+            >
+              {getAllCategoriesForSelection().map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: colors.surfaceMuted, borderColor: colors.primary },
+                    selectedCategory === cat.id &&
+                      [styles.selectedCategoryChip, { backgroundColor: colors.primary }],
+                  ]}
+                  onPress={() => setSelectedCategory(cat.id)}
+                >
+                  <Text
+                    style={[
+                      [styles.categoryChipText, { color: colors.text }],
+                      selectedCategory === cat.id &&
+                        [styles.selectedCategoryChipText, { color: "#FFFFFF" }],
+                    ]}
+                  >
+                    {cat.displayName || cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <TextInput
+            mode="outlined"
+            label="Amount"
+            value={formData.amount}
+            onChangeText={(text) =>
+              setFormData({ ...formData, amount: text })
+            }
+            keyboardType="numeric"
+            style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+            placeholderTextColor={colors.textMuted}
+            theme={{
+              colors: {
+                text: colors.text,
+                primary: colors.primary,
+                outline: colors.border,
+                onSurfaceVariant: colors.textMuted,
+                onSurface: colors.text,
+                placeholder: colors.textMuted,
+                background: colors.surfaceMuted,
+                surface: colors.surfaceMuted,
+              },
+            }}
+            textColor={colors.text}
+            left={
+              <TextInput.Icon icon="currency-inr" color={colors.primary} />
+            }
+          />
+          <TextInput
+            mode="outlined"
+            label="Description (optional)"
+            value={formData.description}
+            onChangeText={(text) =>
+              setFormData({ ...formData, description: text })
+            }
+            style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+            placeholderTextColor={colors.textMuted}
+            theme={{
+              colors: {
+                text: colors.text,
+                primary: colors.primary,
+                outline: colors.border,
+                onSurfaceVariant: colors.textMuted,
+                onSurface: colors.text,
+                placeholder: colors.textMuted,
+                background: colors.surfaceMuted,
+                surface: colors.surfaceMuted,
+              },
+            }}
+            textColor={colors.text}
+            left={
+              <TextInput.Icon icon="note-outline" color={colors.primary} />
+            }
+          />
+          <View style={{ flexDirection: "row", marginTop: 16 }}>
+            <Button
+              mode="contained"
+              onPress={handleAddOrEditExpense}
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              labelStyle={{ color: "#fff", fontWeight: "bold" }}
+              loading={loading}
+            >
+              {loading
+                ? editingExpenseId
+                  ? "Updating..."
+                  : "Adding..."
+                : editingExpenseId
+                ? "Update Expense"
+                : "Add Expense"}
+            </Button>
+            <View style={{ width: 12 }} />
+            <Button
+              mode="outlined"
+              style={[styles.cancelButton, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
+              onPress={() => {
+                setShowForm(false);
+                setFormData({ amount: "", description: "" });
+                setSelectedCategory(categories[0]?.id || "");
+                setEditingExpenseId(null);
+              }}
+              labelStyle={{ color: colors.textMuted, fontWeight: "bold" }}
+            >
+              Cancel
+            </Button>
+          </View>
+        </FormBottomSheet>
         <Toast />
       </KeyboardAvoidingView>
     </MainScreenWrapper>
-    // ...existing code ends cleanly at the MainScreenWrapper closing tag...
   );
 }
 
@@ -894,10 +962,8 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#A259FF",
+    backgroundColor: "transparent",
     color: "#222222",
-    borderWidth: 1,
     borderRadius: 8,
   },
   categoryChip: {
@@ -952,7 +1018,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: "#888888",
-    fontWeight: "600",
+    fontWeight: "300",
   },
   logoutButton: {
     padding: 8,
@@ -966,6 +1032,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#F7F7F7",
     borderWidth: 1,
+    display:'flex',
+    alignItems:"center",
+    justifyContent:'center',
     borderColor: "#E0E0E0",
   },
 });

@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Text, ActivityIndicator, TextInput, Button, FAB } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { supabase } from '../lib/supabase';
+import { getMonthBounds } from '../lib/monthlyBudget';
+import { useAppTheme } from '../context/ThemeContext';
+import FormBottomSheet from '../components/FormBottomSheet';
+import useCompactLayout from '../hooks/useCompactLayout';
 
 export default function CategoryExpenseHistoryScreen({ navigation, route }) {
+  const { colors } = useAppTheme();
+  const isCompact = useCompactLayout();
+  const insets = useSafeAreaInsets();
   const { categoryId, categoryName, allocatedAmount } = route.params;
   const [expenses, setExpenses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,11 +47,14 @@ export default function CategoryExpenseHistoryScreen({ navigation, route }) {
     setIsLoading(true);
     try {
       const user = await supabase.auth.getUser();
+      const { startIso, endIso } = getMonthBounds();
       const { data } = await supabase
         .from('expenses')
         .select('*')
         .eq('user_id', user.data.user.id)
         .eq('category_id', categoryId)
+        .gte('created_at', startIso)
+        .lt('created_at', endIso)
         .order('created_at', { ascending: false });
       
       setExpenses(data || []);
@@ -180,10 +190,10 @@ export default function CategoryExpenseHistoryScreen({ navigation, route }) {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#A259FF" />
-          <Text style={styles.loadingText}>Loading {categoryName} expenses...</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading {categoryName} expenses...</Text>
         </View>
       </SafeAreaView>
     );
@@ -195,194 +205,209 @@ export default function CategoryExpenseHistoryScreen({ navigation, route }) {
       style={{ flex: 1 }}
       keyboardVerticalOffset={64}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-        <View style={styles.container}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity 
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Icon name="arrow-left" size={24} color="#A259FF" />
+              <Icon name="arrow-left" size={24} color={colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{categoryName}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{categoryName}</Text>
           </View>
 
           {/* Summary Card */}
-          <Card style={styles.summaryCard}>
+          <Card style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Card.Content>
-              <Text style={styles.summaryTitle}>Category Summary</Text>
+              <Text style={[styles.summaryTitle, { color: colors.text }]}>Category Summary</Text>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Allocated</Text>
-                  <Text style={styles.summaryValue}>₹{allocatedAmount.toLocaleString('en-IN')}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Allocated</Text>
+                  <Text style={[styles.summaryValue, { color: colors.primary }]}>₹{allocatedAmount.toLocaleString('en-IN')}</Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Spent</Text>
-                  <Text style={styles.summaryValue}>₹{totalSpent.toLocaleString('en-IN')}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Spent</Text>
+                  <Text style={[styles.summaryValue, { color: colors.primary }]}>₹{totalSpent.toLocaleString('en-IN')}</Text>
                 </View>
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryLabel}>Remaining</Text>
-                  <Text style={[styles.summaryValue, getRemainingAmount() < 0 && styles.overspent]}>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Remaining</Text>
+                  <Text style={[styles.summaryValue, { color: colors.primary }, getRemainingAmount() < 0 && { color: colors.danger }]}>
                     ₹{getRemainingAmount().toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
               
               <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
+                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
                   <View 
                     style={[
                       styles.progressFill, 
-                      { width: `${Math.min(getSpentPercentage(), 100)}%` },
-                      getSpentPercentage() > 100 && styles.progressOverspent
+                      { width: `${Math.min(getSpentPercentage(), 100)}%`, backgroundColor: getSpentPercentage() > 100 ? colors.danger : colors.primary },
                     ]} 
                   />
                 </View>
-                <Text style={styles.progressText}>{Math.round(getSpentPercentage())}% used</Text>
+                <Text style={[styles.progressText, { color: colors.textMuted }]}>{Math.round(getSpentPercentage())}% used</Text>
               </View>
             </Card.Content>
           </Card>
 
           {/* Expenses List */}
           <View style={styles.expensesContainer}>
-            <Text style={styles.sectionTitle}>Expenses</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Expenses</Text>
             {expenses.length > 0 ? (
               <FlatList
                 data={expenses}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <Card style={[styles.expenseCard, { marginHorizontal: 4 }]}>
+                  <Card style={[styles.expenseCard, { marginHorizontal: 4, backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <Card.Content>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontWeight: '600', color: '#222', fontSize: 16, marginBottom: 4 }}>
+                          <Text style={{ fontWeight: '600', color: colors.text, fontSize: 16, marginBottom: 4 }}>
                             {item.description || 'No description'}
                           </Text>
-                          <Text style={{ color: '#888', fontSize: 14 }}>
+                          <Text style={{ color: colors.textMuted, fontSize: 14 }}>
                             {categoryName}
                           </Text>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={{ color: '#A259FF', fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>
+                          <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>
                             {`₹${item.amount}`}
                           </Text>
-                          <Text style={{ color: '#bbb', fontSize: 12 }}>
+                          <Text style={{ color: colors.textMuted, fontSize: 12 }}>
                             {formatTime(item.created_at)}
                           </Text>
                         </View>
                       </View>
                       <View style={styles.actionButtons}>
                         <TouchableOpacity onPress={() => handleEditExpense(item)} style={{ marginRight: 8 }}>
-                          <Icon name="pencil" size={20} color="#A259FF" />
+                          <Icon name="pencil" size={20} color={colors.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleMoveExpense(item)} style={{ marginRight: 8 }}>
                           <MaterialCommunityIcons name="swap-horizontal" size={20} color="#FF9500" />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleDeleteExpense(item.id)}>
-                          <Icon name="delete" size={20} color="#EB5757" />
+                          <Icon name="delete" size={20} color={colors.danger} />
                         </TouchableOpacity>
                       </View>
                     </Card.Content>
                   </Card>
                 )}
-                style={{ marginBottom: 16 }}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 72 }}
               />
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyMessage}>No expenses in {categoryName} yet 💸</Text>
+                <Text style={[styles.emptyMessage, { color: colors.textMuted }]}>No expenses in {categoryName} yet 💸</Text>
               </View>
             )}
           </View>
 
-          {/* Add/Edit Expense Form */}
-          {showForm && (
-            <Card style={styles.formCard}>
-              <Card.Content>
-                <Text style={styles.formTitle}>{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</Text>
-                
-                <TextInput
-                  label="Amount"
-                  value={formData.amount}
-                  onChangeText={(text) => setFormData({ ...formData, amount: text })}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholderTextColor="#888888"
-                  theme={{
-                    colors: {
-                      text: "#222222",
-                      primary: "#A259FF",
-                      placeholder: "#888888",
-                      background: "#FFFFFF",
-                    },
-                  }}
-                  textColor="#222222"
-                  left={<TextInput.Icon icon="currency-inr" color="#A259FF" />}
-                />
-
-                <TextInput
-                  label="Description (optional)"
-                  value={formData.description}
-                  onChangeText={(text) => setFormData({ ...formData, description: text })}
-                  style={styles.input}
-                  placeholderTextColor="#888888"
-                  theme={{
-                    colors: {
-                      text: "#222222",
-                      primary: "#A259FF",
-                      placeholder: "#888888",
-                      background: "#FFFFFF",
-                    },
-                  }}
-                  textColor="#222222"
-                  left={<TextInput.Icon icon="note-outline" color="#A259FF" />}
-                />
-
-                <View style={{ flexDirection: 'row', marginTop: 16 }}>
-                  <Button
-                    mode="contained"
-                    onPress={handleAddOrEditExpense}
-                    style={styles.addButton}
-                    labelStyle={{ color: "#fff", fontWeight: "bold" }}
-                    loading={loading}
-                  >
-                    {loading ? (editingExpenseId ? "Updating..." : "Adding...") : (editingExpenseId ? "Update Expense" : "Add Expense")}
-                  </Button>
-                  <View style={{ width: 12 }} />
-                  <Button
-                    mode="outlined"
-                    style={styles.cancelButton}
-                    onPress={() => {
-                      setShowForm(false);
-                      setFormData({ amount: '', description: '' });
-                      setEditingExpenseId(null);
-                    }}
-                    labelStyle={{ color: "#888888", fontWeight: "bold" }}
-                  >
-                    Cancel
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          )}
-
           {/* Add Expense FAB */}
           {!showForm && (
             <FAB
-              style={styles.fabFooter}
+              style={[styles.fabFooter, { backgroundColor: colors.primary, bottom: insets.bottom + 8 }]}
               icon="plus"
               onPress={() => setShowForm(true)}
               color="#fff"
             />
           )}
 
+          <FormBottomSheet
+            visible={showForm}
+            title={editingExpenseId ? "Edit Expense" : "Add Expense"}
+            reserveTabBarSpace={false}
+            onClose={() => {
+              setShowForm(false);
+              setFormData({ amount: '', description: '' });
+              setEditingExpenseId(null);
+            }}
+          >
+            <TextInput
+              mode="outlined"
+              label="Amount"
+              value={formData.amount}
+              onChangeText={(text) => setFormData({ ...formData, amount: text })}
+              keyboardType="numeric"
+              style={[styles.input, { backgroundColor: colors.surfaceMuted }]}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              placeholderTextColor={colors.textMuted}
+              theme={{
+                colors: {
+                  text: colors.text,
+                  primary: colors.primary,
+                  outline: colors.border,
+                  onSurfaceVariant: colors.textMuted,
+                  onSurface: colors.text,
+                  placeholder: colors.textMuted,
+                  background: colors.surfaceMuted,
+                  surface: colors.surfaceMuted,
+                },
+              }}
+              textColor={colors.text}
+              left={<TextInput.Icon icon="currency-inr" color={colors.primary} />}
+            />
+
+            <TextInput
+              mode="outlined"
+              label="Description (optional)"
+              value={formData.description}
+              onChangeText={(text) => setFormData({ ...formData, description: text })}
+              style={[styles.input, { backgroundColor: colors.surfaceMuted }]}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+              placeholderTextColor={colors.textMuted}
+              theme={{
+                colors: {
+                  text: colors.text,
+                  primary: colors.primary,
+                  outline: colors.border,
+                  onSurfaceVariant: colors.textMuted,
+                  onSurface: colors.text,
+                  placeholder: colors.textMuted,
+                  background: colors.surfaceMuted,
+                  surface: colors.surfaceMuted,
+                },
+              }}
+              textColor={colors.text}
+              left={<TextInput.Icon icon="note-outline" color={colors.primary} />}
+            />
+
+            <View style={{ flexDirection: 'row', marginTop: 16 }}>
+              <Button
+                mode="contained"
+                onPress={handleAddOrEditExpense}
+                style={[styles.addButton, { backgroundColor: colors.primary }]}
+                labelStyle={{ color: "#fff", fontWeight: "bold" }}
+                loading={loading}
+              >
+                {loading ? (editingExpenseId ? "Updating..." : "Adding...") : (editingExpenseId ? "Update Expense" : "Add Expense")}
+              </Button>
+              <View style={{ width: 12 }} />
+              <Button
+                mode="outlined"
+                style={[styles.cancelButton, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
+                onPress={() => {
+                  setShowForm(false);
+                  setFormData({ amount: '', description: '' });
+                  setEditingExpenseId(null);
+                }}
+                labelStyle={{ color: colors.textMuted, fontWeight: "bold" }}
+              >
+                Cancel
+              </Button>
+            </View>
+          </FormBottomSheet>
+
           {/* Move Expense Modal */}
           {showMoveModal && (
             <View style={styles.modalOverlay}>
-              <View style={styles.modalContainer}>
-                <Text style={styles.modalTitle}>Move Expense</Text>
-                <Text style={styles.modalSubtitle}>
+              <View style={[styles.modalContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Move Expense</Text>
+                <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
                   Move "{expenseToMove?.description || 'No description'}" to another category
                 </Text>
                 
@@ -392,12 +417,14 @@ export default function CategoryExpenseHistoryScreen({ navigation, route }) {
                       key={cat.id}
                       style={[
                         styles.categoryOption,
+                        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
                         selectedTargetCategory === cat.id && styles.selectedCategoryOption
                       ]}
                       onPress={() => setSelectedTargetCategory(cat.id)}
                     >
                       <Text style={[
                         styles.categoryOptionText,
+                        { color: colors.text },
                         selectedTargetCategory === cat.id && styles.selectedCategoryOptionText
                       ]}>
                         {cat.name}
@@ -408,17 +435,17 @@ export default function CategoryExpenseHistoryScreen({ navigation, route }) {
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity
-                    style={styles.cancelModalButton}
+                    style={[styles.cancelModalButton, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}
                     onPress={() => {
                       setShowMoveModal(false);
                       setExpenseToMove(null);
                       setSelectedTargetCategory('');
                     }}
                   >
-                    <Text style={styles.cancelModalText}>Cancel</Text>
+                    <Text style={[styles.cancelModalText, { color: colors.textMuted }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.confirmModalButton}
+                    style={[styles.confirmModalButton, { backgroundColor: colors.primary }]}
                     onPress={confirmMoveExpense}
                   >
                     <Text style={styles.confirmModalText}>Move</Text>
@@ -450,7 +477,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#888888',
-    fontWeight: '600',
+    fontWeight: '300',
   },
   header: {
     flexDirection: 'row',
@@ -578,10 +605,8 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderColor: '#A259FF',
+    backgroundColor: 'transparent',
     color: '#222222',
-    borderWidth: 1,
     borderRadius: 8,
   },
   addButton: {
@@ -596,7 +621,6 @@ const styles = StyleSheet.create({
   },
   fabFooter: {
     position: 'absolute',
-    bottom: 30,
     alignSelf: 'center',
     backgroundColor: '#A259FF',
     elevation: 4,

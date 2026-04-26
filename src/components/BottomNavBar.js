@@ -2,9 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAppTheme } from '../context/ThemeContext';
+import useCompactLayout from '../hooks/useCompactLayout';
 
-const BottomNavBar = ({ navigation, currentRoute }) => {
+const BottomNavBar = ({ navigation, currentRoute, onTabPress }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const isCompact = useCompactLayout();
 
   const navItems = [
     {
@@ -20,6 +24,12 @@ const BottomNavBar = ({ navigation, currentRoute }) => {
       route: 'BudgetDetails'
     },
     {
+      name: 'History',
+      icon: 'history',
+      label: 'History',
+      route: 'History'
+    },
+    {
       name: 'Reports',
       icon: 'chart-line',
       label: 'Reports',
@@ -29,12 +39,26 @@ const BottomNavBar = ({ navigation, currentRoute }) => {
 
   const handleNavigation = (route) => {
     if (route !== currentRoute) {
-      navigation.navigate(route);
+      if (onTabPress) {
+        onTabPress(route);
+      } else {
+        navigation.navigate(route);
+      }
     }
   };
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          height: isCompact ? 82 : 100,
+          paddingBottom: Math.max(insets.bottom, isCompact ? 4 : 8),
+          backgroundColor: colors.background,
+          borderColor: colors.border,
+        },
+      ]}
+    >
       {navItems.map((item) => {
         const isActive = currentRoute === item.route;
         return (
@@ -46,12 +70,13 @@ const BottomNavBar = ({ navigation, currentRoute }) => {
           >
             <Icon 
               name={item.icon} 
-              size={28} 
-              color={isActive ? '#A259FF' : '#888888'} 
+              size={isCompact ? 24 : 28} 
+              color={isActive ? colors.primary : colors.textMuted} 
             />
             <Text style={[
               styles.navLabel,
-              isActive ? styles.navLabelActive : styles.navLabelInactive
+              { fontSize: isCompact ? 11.5 : 13, marginTop: isCompact ? 2 : 4 },
+              isActive ? { color: colors.primary, fontWeight: '700' } : { color: colors.textMuted }
             ]}>
               {item.label}
             </Text>
@@ -81,20 +106,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',   // center vertically
     alignItems: 'center',       // center horizontally
-    minHeight: 60,
+    minHeight: 52,
   },
   navLabel: {
     fontSize: 13,
     marginTop: 4,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  navLabelActive: {
-    color: '#A259FF',
-    fontWeight: '700',
-  },
-  navLabelInactive: {
-    color: '#888888',
   },
 });
 

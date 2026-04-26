@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Image,
   ActivityIndicator,
@@ -13,12 +12,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { supabase } from '../lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
+import { useAppTheme } from '../context/ThemeContext';
 
 export default function UserProfileScreen({ navigation }) {
+  const { colors } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
@@ -109,14 +111,14 @@ export default function UserProfileScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -124,13 +126,13 @@ export default function UserProfileScreen({ navigation }) {
       >
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Icon name="arrow-left" size={24} color="#222" />
+              <Icon name="arrow-left" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>User Profile</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>User Profile</Text>
             <TouchableOpacity onPress={() => setEditMode((e) => !e)}>
-              <Icon name={editMode ? 'content-save' : 'pencil'} size={22} color="#A259FF" />
+              <Icon name={editMode ? 'content-save' : 'pencil'} size={22} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -141,39 +143,41 @@ export default function UserProfileScreen({ navigation }) {
 
           {/* Profile Fields */}
           <View style={styles.formSection}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Full Name</Text>
             {editMode ? (
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
                 value={name}
                 onChangeText={setName}
                 placeholder="Enter your name"
+                placeholderTextColor={colors.textMuted}
               />
             ) : (
-              <Text style={styles.value}>{name}</Text>
+              <Text style={[styles.value, { color: colors.text }]}>{name}</Text>
             )}
 
-            <Text style={styles.label}>Email</Text>
-            <Text style={styles.value}>{email}</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Email</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{email}</Text>
 
-            <Text style={styles.label}>Total Income</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Total Income</Text>
             {editMode ? (
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text, backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
                 value={income}
                 onChangeText={setIncome}
                 placeholder="Enter total income"
                 keyboardType="numeric"
+                placeholderTextColor={colors.textMuted}
               />
             ) : (
-              <Text style={styles.value}>{income ? `₹${income}` : 'Not set'}</Text>
+              <Text style={[styles.value, { color: colors.text }]}>{income ? `₹${income}` : 'Not set'}</Text>
             )}
           </View>
 
           {/* Save Button */}
           {editMode && (
             <TouchableOpacity
-              style={styles.saveButton}
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={handleSave}
               disabled={saving}
             >
@@ -261,6 +265,7 @@ const styles = StyleSheet.create({
     color: '#222',
     backgroundColor: '#F7F7F7',
     borderRadius: 8,
+    borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 14,
     marginBottom: 4,

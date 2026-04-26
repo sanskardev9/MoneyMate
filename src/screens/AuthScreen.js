@@ -6,25 +6,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Image,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import { Animated, Easing } from "react-native";
 import Toast from "react-native-toast-message";
-import * as ImagePicker from 'expo-image-picker';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import AddProfileImageScreen from './AddProfileImageScreen';
 
-export default function AuthScreen({ navigation }) {
+export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
-  const [profileImage, setProfileImage] = useState(null);
-  const [justSignedUp, setJustSignedUp] = useState(false);
 
   const logoAnim = useRef(new Animated.Value(0)).current;
   const [typedText, setTypedText] = useState("");
@@ -61,61 +52,6 @@ export default function AuthScreen({ navigation }) {
     }).start();
   }, []);
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera roll permissions to select a profile image.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-
-  const uploadProfileImage = async (userId) => {
-    if (!profileImage) return null;
-
-    try {
-      console.log('Starting image upload for user:', userId);
-      const response = await fetch(profileImage);
-      const blob = await response.blob();
-      
-      const fileName = `profile_${userId}_${Date.now()}.jpg`;
-      console.log('Uploading file:', fileName);
-      
-      const { data, error } = await supabase.storage
-        .from('profile-images')
-        .upload(fileName, blob, { 
-          upsert: true,
-          contentType: 'image/jpeg'
-        });
-
-      if (error) {
-        console.error('Supabase storage upload error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        return null;
-      }
-
-      console.log('Upload successful, getting public URL');
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile-images')
-        .getPublicUrl(fileName);
-
-      console.log('Public URL:', publicUrl);
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading profile image:', error);
-      return null;
-    }
-  };
   const handleAuth = async () => {
     if (!email || !password || (!isLogin && !name)) {
       Toast.show({
@@ -156,50 +92,50 @@ export default function AuthScreen({ navigation }) {
         Toast.show({
           type: "success",
           text1: "Account created!",
-          text2: "Check your inbox to confirm your email.",
+          text2: data.session
+            ? "Taking you into the app."
+            : "Please log in to continue.",
         });
 
-        // Store user data in users table
-        if (name && name.trim()) {
-          const { error: insertError } = await supabase
-            .from("users")
-            .insert([{ 
-              id: data.user.id, 
-              email, 
-              name: name.trim(),
-              profile_image_url: null 
-            }]);
-          if (insertError) {
-            Toast.show({
-              type: 'error',
-              text1: insertError.message,
-              position: 'bottom',
-              visibilityTime: 2000,
-              autoHide: true,
-              bottomOffset: 40,
-            });
-          } else {
-            Toast.show({
-              type: 'success',
-              text1: 'Signup successful!',
-              position: 'bottom',
-              visibilityTime: 2000,
-              autoHide: true,
-              bottomOffset: 40,
-            });
-            setJustSignedUp(true);
-            return;
-          }
-        } else {
+        if (!data.user?.id) {
           Toast.show({
-            type: 'error',
-            text1: 'Please enter your name.',
-            position: 'bottom',
+            type: "error",
+            text1: "Signup completed, but user record was missing.",
+          });
+          return;
+        }
+
+        if (!name.trim()) {
+          Toast.show({
+            type: "error",
+            text1: "Please enter your name.",
+          });
+          return;
+        }
+
+        const { error: insertError } = await supabase.from("users").upsert([
+          {
+            id: data.user.id,
+            email,
+            name: name.trim(),
+            profile_image_url: null,
+          },
+        ]);
+
+        if (insertError) {
+          Toast.show({
+            type: "error",
+            text1: insertError.message,
+            position: "bottom",
             visibilityTime: 2000,
             autoHide: true,
             bottomOffset: 40,
           });
           return;
+        }
+
+        if (!data.session) {
+          setIsLogin(true);
         }
       }
     }
@@ -208,9 +144,6 @@ export default function AuthScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-      {justSignedUp && (
-        <AddProfileImageScreen onComplete={() => setJustSignedUp(false)} />
-      )}
 
       <Animated.Text
         style={[
@@ -363,64 +296,5 @@ const styles = StyleSheet.create({
     textShadowColor: "#A259FF55",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
-  },
-  profileImageContainer: {
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#A259FF',
-  },
-  profileImagePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#A259FF',
-    borderStyle: 'dashed',
-    backgroundColor: '#F7F7F7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#A259FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  profileImageText: {
-    color: '#A259FF',
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  profileImageSection: {
-    marginBottom: 20,
-  },
-  profileImageLabel: {
-    color: '#888888',
-    fontSize: 14,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  profileImageWrapper: {
-    position: 'relative',
-  },
-  changeImageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#A259FF',
-    borderRadius: 15,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
 });
