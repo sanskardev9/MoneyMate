@@ -1,14 +1,28 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavBar from './BottomNavBar';
+import { useAppTheme } from '../context/ThemeContext';
+import { useTabShell } from '../context/TabShellContext';
 
 const MainScreenWrapper = ({ children, navigation, currentRoute }) => {
+  const { colors } = useAppTheme();
+  const tabShell = useTabShell();
+
+  if (tabShell) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.content}>{children}</View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         {children}
       </View>
-      <View style={styles.navbarContainer}>
+      <View style={[styles.navbarContainer, { backgroundColor: colors.background }]}>
         <BottomNavBar navigation={navigation} currentRoute={currentRoute} />
       </View>
     </SafeAreaView>

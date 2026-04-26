@@ -4,16 +4,18 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ScrollView,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { supabase } from '../lib/supabase';
 import Toast from 'react-native-toast-message';
+import { useAppTheme } from '../context/ThemeContext';
 
 export default function SettingsScreen({ navigation }) {
+  const { colors, themeMode } = useAppTheme();
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState(null);
 
@@ -86,6 +88,21 @@ export default function SettingsScreen({ navigation }) {
 
   const settingsOptions = [
     {
+      id: 'appearance',
+      title: 'Appearance',
+      subtitle:
+        themeMode === 'adaptive'
+          ? 'Adaptive theme based on time'
+          : themeMode === 'dark'
+          ? 'Dark mode is active'
+          : 'Light mode is active',
+      icon: 'palette',
+      color: '#A259FF',
+      onPress: () => {
+        navigation.navigate('Appearance');
+      },
+    },
+    {
       id: 'profile',
       title: 'Profile',
       subtitle: 'Manage your account information',
@@ -154,42 +171,41 @@ export default function SettingsScreen({ navigation }) {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-left" size={24} color="#222222" />
+            <Icon name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         {/* User Info */}
-        <View style={styles.userSection}>
-          <Text style={styles.userName}>{userName || 'User'}</Text>
-          <Text style={styles.userSubtitle}>Manage your account</Text>
+        <View style={[styles.userSection, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.userName, { color: colors.text }]}>{userName || 'User'}</Text>
+          <Text style={[styles.userSubtitle, { color: colors.textMuted }]}>Manage your account</Text>
         </View>
 
-        {/* Settings Options */}
         <View style={styles.settingsSection}>
           {settingsOptions.map((option) => (
             <TouchableOpacity
               key={option.id}
-              style={styles.settingOption}
+              style={[styles.settingOption, { borderBottomColor: colors.border }]}
               onPress={option.onPress}
             >
               <View style={[styles.optionIcon, { backgroundColor: option.color + '20' }]}>
                 <Icon name={option.icon} size={24} color={option.color} />
               </View>
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+                <Text style={[styles.optionTitle, { color: colors.text }]}>{option.title}</Text>
+                <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>{option.subtitle}</Text>
               </View>
-              <Icon name="chevron-right" size={24} color="#CCCCCC" />
+              <Icon name="chevron-right" size={24} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
@@ -197,10 +213,10 @@ export default function SettingsScreen({ navigation }) {
         {/* Logout Section */}
         <View style={styles.logoutSection}>
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={[styles.logoutButton, { backgroundColor: colors.surfaceMuted }]}
             onPress={handleLogout}
           >
-            <Icon name="logout" size={20} color="#EB5757" />
+            <Icon name="logout" size={20} color={colors.danger} />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>

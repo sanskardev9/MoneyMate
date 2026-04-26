@@ -29,8 +29,13 @@ import {
 } from "react-native";
 import CustomModal from "../components/CustomModal";
 import BudgetCategoriesHeader from "../components/BudgetCategoriesHeader";
+import { useAppTheme } from "../context/ThemeContext";
+import FormBottomSheet from "../components/FormBottomSheet";
+import useCompactLayout from "../hooks/useCompactLayout";
 
 const BudgetCategoriesScreen = ({ navigation }) => {
+  const { colors } = useAppTheme();
+  const isCompact = useCompactLayout();
   const [categories, setCategories] = useState([]);
   const [income, setIncome] = useState(0);
   const [incomeDetails, setIncomeDetails] = useState(null);
@@ -324,54 +329,73 @@ const BudgetCategoriesScreen = ({ navigation }) => {
     
     return (
       <Animated.View entering={FadeInDown}>
-        <Card style={[styles.card, isMainCategory && styles.mainCategoryCard]}>
+        <Card style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Card.Title
             title={item.name}
             subtitle={`₹${item.amount}`}
-            titleStyle={{ color: "#222222", fontWeight: isMainCategory ? "bold" : "normal" }}
-            subtitleStyle={{ color: "#888888" }}
+            titleStyle={{ color: colors.text, fontWeight: isMainCategory ? "bold" : "normal" }}
+            subtitleStyle={{ color: colors.textMuted }}
             right={() => (
               <View style={{ flexDirection: "row" }}>
                 {isMainCategory && (
                   <IconButton
                     icon="plus"
-                    onPress={() => handleAddSubcategory(item)}
-                    iconColor="#A259FF"
+                    onPress={(event) => {
+                      event?.stopPropagation?.();
+                      handleAddSubcategory(item);
+                    }}
+                    iconColor={colors.primary}
                   />
                 )}
                 <IconButton
                   icon="pencil"
-                  onPress={() => handleEdit(item)}
+                  onPress={(event) => {
+                    event?.stopPropagation?.();
+                    handleEdit(item);
+                  }}
+                  iconColor={colors.primary}
                 />
                 <IconButton
                   icon="delete"
-                  onPress={() => handleDelete(item.id)}
+                  onPress={(event) => {
+                    event?.stopPropagation?.();
+                    handleDelete(item.id);
+                  }}
+                  iconColor={colors.danger}
                 />
               </View>
             )}
           />
           {subcategories.length > 0 && (
             <Card.Content>
-              <View style={styles.subcategoriesContainer}>
-                <View style={styles.subcategoriesHeader}>
-                  <Text style={styles.subcategoriesTitle}>Sub Categories</Text>
+              <View style={[styles.subcategoriesContainer, { borderTopColor: colors.border }]}>
+                <View style={[styles.subcategoriesHeader, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+                  <Text style={[styles.subcategoriesTitle, { color: colors.textMuted }]}>Sub Categories</Text>
                 </View>
                 {subcategories.map((subcat) => (
-                  <View key={subcat.id} style={styles.subcategoryItem}>
+                  <View key={subcat.id} style={[styles.subcategoryItem, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
                     <View style={styles.subcategoryInfo}>
-                      <Text style={styles.subcategoryName}>{subcat.name}</Text>
-                      <Text style={styles.subcategoryAmount}>₹{subcat.amount}</Text>
+                      <Text style={[styles.subcategoryName, { color: colors.text }]}>{subcat.name}</Text>
+                      <Text style={[styles.subcategoryAmount, { color: colors.primary }]}>₹{subcat.amount}</Text>
                     </View>
                     <View style={styles.subcategoryActions}>
                       <IconButton
                         icon="pencil"
                         size={16}
-                        onPress={() => handleEdit(subcat)}
+                        onPress={(event) => {
+                          event?.stopPropagation?.();
+                          handleEdit(subcat);
+                        }}
+                        iconColor={colors.primary}
                       />
                       <IconButton
                         icon="delete"
                         size={16}
-                        onPress={() => handleDelete(subcat.id)}
+                        onPress={(event) => {
+                          event?.stopPropagation?.();
+                          handleDelete(subcat.id);
+                        }}
+                        iconColor={colors.danger}
                       />
                     </View>
                   </View>
@@ -385,17 +409,17 @@ const BudgetCategoriesScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingHorizontal: isCompact ? 12 : 16, paddingTop: isCompact ? 18 : 24 }]}>
           <BudgetCategoriesHeader />
           
           <View>
-            <Card style={styles.summaryCard}>
+            <Card style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Card.Content>
                 <View
                   style={{
@@ -406,7 +430,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                 >
                   <Text
                     style={{
-                      color: "#222222",
+                      color: colors.text,
                       fontWeight: "bold",
                       fontSize: 16,
                     }}
@@ -420,7 +444,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                     }}
                     style={{ marginLeft: 8 }}
                   >
-                    <Feather name="edit" size={18} color="#A259FF" />
+                    <Feather name="edit" size={18} color={colors.primary} />
                   </TouchableOpacity>
                 </View>
 
@@ -478,15 +502,15 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                   </View>
                 )}
 
-                <Text style={{ color: "#888888", marginTop: 8 }}>
+                <Text style={{ color: colors.textMuted, marginTop: 8 }}>
                   Remaining Budget: ₹{(totalAvailableIncome - totalAllocated).toLocaleString('en-IN')}
                 </Text>
                 <ProgressBar
                   progress={totalAvailableIncome ? totalAllocated / totalAvailableIncome : 0}
-                  color="#A259FF"
-                  style={{ marginTop: 8 }}
+                  color={colors.primary}
+                  style={{ marginTop: 8, backgroundColor: colors.border }}
                 />
-                <Text style={{ color: "#A259FF", marginTop: 4 }}>
+                <Text style={{ color: colors.primary, marginTop: 4 }}>
                   {totalAvailableIncome
                     ? `${Math.round(
                         (totalAllocated / totalAvailableIncome) * 100
@@ -514,7 +538,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                   <Text
                     style={{
                       textAlign: "center",
-                      color: "#888888",
+                      color: colors.textMuted,
                       fontSize: 16,
                       marginBottom: 16,
                     }}
@@ -524,7 +548,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <TouchableOpacity
                       style={{
-                        backgroundColor: "#A259FF",
+                        backgroundColor: colors.primary,
                         borderRadius: 10,
                         paddingVertical: 12,
                         paddingHorizontal: 24,
@@ -545,11 +569,11 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={{
-                        borderColor: "#A259FF",
+                        borderColor: colors.primary,
                       }}
                       onPress={() => setShowInfoModal(true)}
                     >
-                      <Ionicons name="information-circle-outline" size={22} color="#A259FF" />
+                      <Ionicons name="information-circle-outline" size={22} color={colors.primary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -558,147 +582,12 @@ const BudgetCategoriesScreen = ({ navigation }) => {
               contentContainerStyle={{ paddingBottom: 16 }}
             />
           </View>
-          {showForm ? (
-            <Card style={styles.formCard}>
-                          <Card.Content>
-              {/* Show parent category info when adding subcategory */}
-              {form.parent_id && !form.id && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={styles.label}>Parent Category</Text>
-                  <View style={styles.parentCategoryInfo}>
-                    <Text style={styles.parentCategoryName}>
-                      {categories.find(cat => cat.id === form.parent_id)?.name}
-                    </Text>
-                    <Text style={styles.remainingBudgetText}>
-                      Remaining Budget: ₹{getRemainingBudget(form.parent_id).toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              
-              {/* Parent Category Selection - Only show when adding main category */}
-              {!form.id && !form.parent_id && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={styles.label}>Parent Category (Optional)</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.categoryChip,
-                        !selectedParentCategory && styles.selectedCategoryChip
-                      ]}
-                      onPress={() => {
-                        setSelectedParentCategory(null);
-                        setForm({ ...form, parent_id: null });
-                      }}
-                    >
-                      <Text style={[
-                        styles.categoryChipText,
-                        !selectedParentCategory && styles.selectedCategoryChipText
-                      ]}>
-                        Main Category
-                      </Text>
-                    </TouchableOpacity>
-                    {getMainCategories().map((cat) => (
-                      <TouchableOpacity
-                        key={cat.id}
-                        style={[
-                          styles.categoryChip,
-                          selectedParentCategory === cat.id && styles.selectedCategoryChip
-                        ]}
-                        onPress={() => {
-                          setSelectedParentCategory(cat.id);
-                          setForm({ ...form, parent_id: cat.id });
-                        }}
-                      >
-                        <Text style={[
-                          styles.categoryChipText,
-                          selectedParentCategory === cat.id && styles.selectedCategoryChipText
-                        ]}>
-                          {cat.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-                <Text style={styles.formTitle}>
-                  {form.id ? 'Edit Category' : 
-                   form.parent_id ? 'Add Subcategory' : 'Add Category'}
-                </Text>
-                
-                <TextInput
-                  label="Category Name"
-                  value={form.name}
-                  onChangeText={(text) => setForm({ ...form, name: text })}
-                  style={styles.input}
-                  placeholderTextColor="#888888"
-                  theme={{
-                    colors: {
-                      text: "#222222",
-                      primary: "#A259FF",
-                      placeholder: "#888888",
-                      background: "#FFFFFF",
-                    },
-                  }}
-                  textColor="#222222"
-                />
-                <TextInput
-                  label="Amount"
-                  value={form.amount}
-                  onChangeText={(text) => setForm({ ...form, amount: text })}
-                  keyboardType="numeric"
-                  style={styles.input}
-                  placeholderTextColor="#888888"
-                  theme={{
-                    colors: {
-                      text: "#222222",
-                      primary: "#A259FF",
-                      placeholder: "#888888",
-                      background: "#FFFFFF",
-                    },
-                  }}
-                  textColor="#222222"
-                />
-                <View style={{ flexDirection: "row", marginTop: 8 }}>
-                  <Button
-                    mode="contained"
-                    onPress={handleAddOrEdit}
-                    style={{
-                      backgroundColor: "#A259FF",
-                      borderRadius: 10,
-                      flex: 1,
-                    }}
-                    labelStyle={{ color: "#fff", fontWeight: "bold" }}
-                  >
-                    {form.id ? "Update" : "Add"}
-                  </Button>
-                  <View style={{ width: 12 }} />
-                  <Button
-                    mode="outlined"
-                    style={{
-                      borderColor: "#888888",
-                      borderRadius: 10,
-                      flex: 1,
-                    }}
-                    onPress={() => {
-                      setShowForm(false);
-                      setForm({ name: "", amount: "", id: null, parent_id: null });
-                      setSelectedParentCategory(null);
-                    }}
-                    labelStyle={{ color: "#888888", fontWeight: "bold" }}
-                  >
-                    Cancel
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          ) : (
+          {!showForm ? (
             <>
               <Button
                 mode="contained"
                 onPress={() => setShowForm(true)}
-                style={styles.addButton}
+                style={[styles.addButton, { backgroundColor: colors.primary }]}
                 labelStyle={{ color: "#fff", fontWeight: "bold" }}
               >
                 Add Category
@@ -707,24 +596,180 @@ const BudgetCategoriesScreen = ({ navigation }) => {
                 mode="outlined"
                 style={{
                   marginTop: 10,
-                  borderColor: "#888888",
+                  borderColor: colors.border,
                   borderRadius: 10,
                 }}
                 onPress={() => {
                   if (totalAllocated >= income) {
-                    navigation.navigate("Expense");
+                    navigation.navigate("MainTabs", { tab: "Expense" });
                   } else {
                     setShowModal(true);
                   }
                 }}
-                labelStyle={{ color: "#888888" }}
+                labelStyle={{ color: colors.textMuted }}
               >
                 Continue
               </Button>
             </>
-          )}
+          ) : null}
         </View>
       </KeyboardAvoidingView>
+
+      <FormBottomSheet
+        visible={showForm}
+        title={
+          form.id
+            ? "Edit Category"
+            : form.parent_id
+            ? "Add Subcategory"
+            : "Add Category"
+        }
+        snapPoints={[isCompact ? "88%" : "65%"]}
+        onClose={() => {
+          setShowForm(false);
+          setForm({ name: "", amount: "", id: null, parent_id: null });
+          setSelectedParentCategory(null);
+        }}
+      >
+        {form.parent_id && !form.id && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Parent Category</Text>
+            <View style={[styles.parentCategoryInfo, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
+              <Text style={[styles.parentCategoryName, { color: colors.text }]}>
+                {categories.find(cat => cat.id === form.parent_id)?.name}
+              </Text>
+              <Text style={[styles.remainingBudgetText, { color: colors.textMuted }]}>
+                Remaining Budget: ₹{getRemainingBudget(form.parent_id).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {!form.id && !form.parent_id && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Parent Category (Optional)</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+              <TouchableOpacity
+                style={[
+                  styles.categoryChip,
+                  { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                  !selectedParentCategory && styles.selectedCategoryChip
+                ]}
+                onPress={() => {
+                  setSelectedParentCategory(null);
+                  setForm({ ...form, parent_id: null });
+                }}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  { color: colors.text },
+                  !selectedParentCategory && styles.selectedCategoryChipText
+                ]}>
+                  Main Category
+                </Text>
+              </TouchableOpacity>
+              {getMainCategories().map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                    selectedParentCategory === cat.id && styles.selectedCategoryChip
+                  ]}
+                  onPress={() => {
+                    setSelectedParentCategory(cat.id);
+                    setForm({ ...form, parent_id: cat.id });
+                  }}
+                >
+                  <Text style={[
+                    styles.categoryChipText,
+                    { color: colors.text },
+                    selectedParentCategory === cat.id && styles.selectedCategoryChipText
+                  ]}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <TextInput
+          mode="outlined"
+          label="Category Name"
+          value={form.name}
+          onChangeText={(text) => setForm({ ...form, name: text })}
+          style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+          placeholderTextColor={colors.textMuted}
+          theme={{
+            colors: {
+              text: colors.text,
+              primary: colors.primary,
+              outline: colors.border,
+              onSurfaceVariant: colors.textMuted,
+              onSurface: colors.text,
+              placeholder: colors.textMuted,
+              background: colors.surfaceMuted,
+              surface: colors.surfaceMuted,
+            },
+          }}
+          textColor={colors.text}
+        />
+        <TextInput
+          mode="outlined"
+          label="Amount"
+          value={form.amount}
+          onChangeText={(text) => setForm({ ...form, amount: text })}
+          keyboardType="numeric"
+          style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+          placeholderTextColor={colors.textMuted}
+          theme={{
+            colors: {
+              text: colors.text,
+              primary: colors.primary,
+              outline: colors.border,
+              onSurfaceVariant: colors.textMuted,
+              onSurface: colors.text,
+              placeholder: colors.textMuted,
+              background: colors.surfaceMuted,
+              surface: colors.surfaceMuted,
+            },
+          }}
+          textColor={colors.text}
+        />
+        <View style={{ flexDirection: "row", marginTop: 8 }}>
+          <Button
+            mode="contained"
+            onPress={handleAddOrEdit}
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 10,
+              flex: 1,
+            }}
+            labelStyle={{ color: "#fff", fontWeight: "bold" }}
+          >
+            {form.id ? "Update" : "Add"}
+          </Button>
+          <View style={{ width: 12 }} />
+          <Button
+            mode="outlined"
+            style={{
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceMuted,
+              borderRadius: 10,
+              flex: 1,
+            }}
+            onPress={() => {
+              setShowForm(false);
+              setForm({ name: "", amount: "", id: null, parent_id: null });
+              setSelectedParentCategory(null);
+            }}
+            labelStyle={{ color: colors.textMuted, fontWeight: "bold" }}
+          >
+            Cancel
+          </Button>
+        </View>
+      </FormBottomSheet>
 
       {/* Modals */}
       <CustomModal
@@ -732,7 +777,7 @@ const BudgetCategoriesScreen = ({ navigation }) => {
         onClose={() => setShowModal(false)}
         onConfirm={() => {
           setShowModal(false);
-          navigation.navigate("Expense");
+          navigation.navigate("MainTabs", { tab: "Expense" });
         }}
         title="Skip Budgeting?"
         message="It's cool to skip — just don't ghost your budget forever, You can always set it up later!😉"
@@ -842,10 +887,8 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#A259FF",
+    backgroundColor: "transparent",
     color: "#222222",
-    borderWidth: 1,
     borderRadius: 8,
   },
   addButton: { marginTop: 12, backgroundColor: "#A259FF", borderRadius: 10 },

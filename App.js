@@ -122,30 +122,79 @@ import BudgetCategoriesScreen from "./src/screens/BudgetCategoriesScreen";
 import BudgetDetailsScreen from "./src/screens/BudgetDetailsScreen";
 import CategoryExpenseHistoryScreen from "./src/screens/CategoryExpenseHistoryScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import AppearanceScreen from "./src/screens/AppearanceScreen";
 import ExpenseScreen from "./src/screens/ExpenseScreen";
 
 import ExpenseHistoryScreen from "./src/screens/ExpenseHistoryScreen";
 import UserProfileScreen from "./src/screens/UserProfileScreen";
-import AddProfileImageScreen from "./src/screens/AddProfileImageScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
 import ReportsScreen from "./src/screens/ReportsScreen";
 
 
 // Navigation & UI
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
+import { Provider as PaperProvider } from "react-native-paper";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { ThemeProvider, useAppTheme } from "./src/context/ThemeContext";
+import BottomNavBar from "./src/components/BottomNavBar";
+import { TabShellProvider } from "./src/context/TabShellContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+const TAB_SCREENS = {
+  Expense: ExpenseScreen,
+  BudgetDetails: BudgetDetailsScreen,
+  History: HistoryScreen,
+  Reports: ReportsScreen,
+};
+
+function MainTabsShell({ navigation, route, initialTab = "Expense" }) {
+  const { colors } = useAppTheme();
+  const [activeTab, setActiveTab] = useState(route.params?.tab || initialTab);
+
+  useEffect(() => {
+    if (route.params?.tab && route.params.tab !== activeTab) {
+      setActiveTab(route.params.tab);
+    }
+  }, [route.params?.tab, activeTab]);
+
+  const ActiveScreen = TAB_SCREENS[activeTab] || ExpenseScreen;
+
+  return (
+    <TabShellProvider
+      value={{
+        activeRoute: activeTab,
+        setActiveRoute: setActiveTab,
+      }}
+    >
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1 }}>
+          <ActiveScreen navigation={navigation} route={route} />
+        </View>
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+          <BottomNavBar
+            navigation={navigation}
+            currentRoute={activeTab}
+            onTabPress={setActiveTab}
+          />
+        </View>
+      </View>
+    </TabShellProvider>
+  );
+}
+
+function AppContent() {
+  const { paperTheme } = useAppTheme();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [income, setIncome] = useState(null);
   const [categories, setCategories] = useState([]);
   const [initialRoute, setInitialRoute] = useState(null);
+  const [initialTab, setInitialTab] = useState("Expense");
 
   useEffect(() => {
     const getSession = async () => {
@@ -205,9 +254,12 @@ export default function App() {
             (sum, c) => sum + Number(c.amount),
             0
           );
-          setInitialRoute(
-            totalAllocated < userIncome ? "BudgetCategories" : "Expense"
-          );
+          if (totalAllocated < userIncome) {
+            setInitialRoute("BudgetCategories");
+          } else {
+            setInitialRoute("MainTabs");
+            setInitialTab("Expense");
+          }
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
@@ -228,40 +280,50 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={DefaultTheme}>
-        <NavigationContainer>
-          <Stack.Navigator
-            screenOptions={{ headerShown: false }}
-            initialRouteName={initialRoute}
-          >
-            {!session ? (
-              <Stack.Screen name="Auth" component={AuthScreen} />
-            ) : (
-              <>
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen
-                  name="BudgetCategories"
-                  component={BudgetCategoriesScreen}
-                />
-                <Stack.Screen name="BudgetDetails" component={BudgetDetailsScreen} />
-                <Stack.Screen name="CategoryExpenseHistory" component={CategoryExpenseHistoryScreen} />
-                <Stack.Screen name="Expense" component={ExpenseScreen} />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-                <Stack.Screen name="Reports" component={ReportsScreen} />
-        
-                <Stack.Screen
-                  name="ExpenseHistory"
-                  component={ExpenseHistoryScreen}
-                />
-              </>
-            )}
-          </Stack.Navigator>
-          <StatusBar style="auto" />
-          <Toast />
-        </NavigationContainer>
-      </PaperProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PaperProvider theme={paperTheme}>
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={{ headerShown: false }}
+              initialRouteName={initialRoute}
+            >
+              {!session ? (
+                <Stack.Screen name="Auth" component={AuthScreen} />
+              ) : (
+                <>
+                  <Stack.Screen name="Home" component={HomeScreen} />
+                  <Stack.Screen
+                    name="BudgetCategories"
+                    component={BudgetCategoriesScreen}
+                  />
+                  <Stack.Screen name="CategoryExpenseHistory" component={CategoryExpenseHistoryScreen} />
+                  <Stack.Screen name="MainTabs">
+                    {(props) => <MainTabsShell {...props} initialTab={initialTab} />}
+                  </Stack.Screen>
+                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                  <Stack.Screen name="Appearance" component={AppearanceScreen} />
+                  <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+                  <Stack.Screen
+                    name="ExpenseHistory"
+                    component={ExpenseHistoryScreen}
+                  />
+                </>
+              )}
+            </Stack.Navigator>
+            <StatusBar style={paperTheme.dark ? "light" : "dark"} />
+            <Toast />
+          </NavigationContainer>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
