@@ -175,7 +175,7 @@ export default function ExpenseScreen({ navigation }) {
     const user = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("budget_categories")
-      .select("id, name, parent_id")
+      .select("id, name, amount, parent_id")
       .eq("user_id", user.data.user.id)
       .order("created_at", { ascending: true });
     if (!error && data && data.length > 0) {
@@ -199,6 +199,25 @@ export default function ExpenseScreen({ navigation }) {
   // Get subcategories for a specific parent
   const getSubcategories = (parentId) => {
     return categories.filter((cat) => cat.parent_id === parentId);
+  };
+
+  const getDirectCategorySpend = (categoryId) => {
+    return expenses
+      .filter((expense) => expense.category_id === categoryId && expense.id !== editingExpenseId)
+      .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  };
+
+  const getAvailableParentCategoryBudget = (categoryId) => {
+    const category = categories.find((cat) => cat.id === categoryId);
+    if (!category) return null;
+
+    const subcategoriesTotal = getSubcategories(categoryId).reduce(
+      (sum, subcat) => sum + Number(subcat.amount || 0),
+      0
+    );
+    const directSpent = getDirectCategorySpend(categoryId);
+
+    return Number(category.amount || 0) - subcategoriesTotal - directSpent;
   };
 
   // Get all categories for selection (main + subcategories)
@@ -266,6 +285,32 @@ export default function ExpenseScreen({ navigation }) {
       return;
     }
     setLoading(true);
+
+    const selectedCategoryDetails = categories.find((cat) => cat.id === selectedCategory);
+    const isParentCategory = selectedCategoryDetails && !selectedCategoryDetails.parent_id;
+    const hasSubcategories = getSubcategories(selectedCategory).length > 0;
+
+    if (isParentCategory && hasSubcategories) {
+      const availableBudget = getAvailableParentCategoryBudget(selectedCategory);
+      const expenseAmount = Number(formData.amount);
+
+      if (availableBudget !== null && expenseAmount > availableBudget) {
+        Toast.show({
+          type: "error",
+          text1:
+            availableBudget <= 0
+              ? "This category's budget is fully assigned."
+              : `Only ₹${availableBudget.toLocaleString("en-IN")} is still unassigned here.`,
+          text2:
+            availableBudget <= 0
+              ? "Choose one of its subcategories to log this expense."
+              : "Use a subcategory, or reduce the amount to stay within the unassigned balance.",
+        });
+        setLoading(false);
+        return;
+      }
+    }
+
     const user = await supabase.auth.getUser();
     if (editingExpenseId) {
       // Update existing expense

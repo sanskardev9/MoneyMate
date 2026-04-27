@@ -33,7 +33,7 @@
       "package": "com.sanskardev9.moneymate"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/MoneyMateLogo2.png"
     },
     "extra": {
       "eas": {
@@ -41,7 +41,15 @@
       }
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/MoneyMateLogo2.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ]
   }
 }
