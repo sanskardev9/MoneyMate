@@ -196,6 +196,21 @@ function AppContent() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [initialTab, setInitialTab] = useState("Expense");
 
+  const clearSessionState = () => {
+    setSession(null);
+    setIncome(null);
+    setCategories([]);
+    setInitialRoute(null);
+    setInitialTab("Expense");
+    setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    clearSessionState();
+  };
+
   useEffect(() => {
     const getSession = async () => {
       const { data, error } = await supabase.auth.getSession();
@@ -210,6 +225,9 @@ function AppContent() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (!session) {
+        clearSessionState();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -301,7 +319,9 @@ function AppContent() {
                   <Stack.Screen name="MainTabs">
                     {(props) => <MainTabsShell {...props} initialTab={initialTab} />}
                   </Stack.Screen>
-                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                  <Stack.Screen name="Settings">
+                    {(props) => <SettingsScreen {...props} onLogout={handleLogout} />}
+                  </Stack.Screen>
                   <Stack.Screen name="Appearance" component={AppearanceScreen} />
                   <Stack.Screen name="UserProfile" component={UserProfileScreen} />
                   <Stack.Screen

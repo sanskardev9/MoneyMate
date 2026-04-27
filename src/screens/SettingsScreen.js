@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import Toast from 'react-native-toast-message';
 import { useAppTheme } from '../context/ThemeContext';
 
-export default function SettingsScreen({ navigation }) {
+export default function SettingsScreen({ navigation, onLogout }) {
   const { colors, themeMode } = useAppTheme();
   const [userName, setUserName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState(null);
@@ -68,7 +68,12 @@ export default function SettingsScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await supabase.auth.signOut();
+              if (onLogout) {
+                await onLogout();
+              } else {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+              }
               Toast.show({
                 type: 'success',
                 text1: 'Logged out successfully',
@@ -78,6 +83,7 @@ export default function SettingsScreen({ navigation }) {
               Toast.show({
                 type: 'error',
                 text1: 'Error logging out',
+                text2: error?.message,
               });
             }
           },
